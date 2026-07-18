@@ -1,14 +1,15 @@
 /**
- * Learn more about light and dark modes:
- * https://docs.expo.dev/guides/color-schemes/
+ * Adapter: i vecchi nomi di token colore, ora presi dai ruoli MD3 del tema
+ * Paper (sorgente unica). Mantiene invariati i call site esistenti.
+ * Vedi docs/adr/0004.
  */
+import { useTheme as usePaperTheme } from 'react-native-paper';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ColorRole, ThemeColor } from '@/constants/theme';
 
-export function useTheme() {
-  const scheme = useColorScheme();
-  const theme = scheme === 'unspecified' ? 'light' : scheme;
-
-  return Colors[theme];
+export function useTheme(): Record<ThemeColor, string> {
+  const { colors } = usePaperTheme();
+  return Object.fromEntries(
+    Object.entries(ColorRole).map(([name, role]) => [name, colors[role as keyof typeof colors]]),
+  ) as Record<ThemeColor, string>;
 }

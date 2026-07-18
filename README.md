@@ -1,6 +1,26 @@
-# Welcome to your Expo app 👋
+# Yu-Gi-Oh! Deck & Wishlist
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App per gestire una wishlist di carte e costruire deck per **retro format** (Goat, Edison, HAT, Tengu). Il **modello di dominio** (Card, Print, Deck, Format, Banlist…) è in [`CONTEXT.MD`](./CONTEXT.MD); le decisioni non ovvie in [`docs/adr/`](./docs/adr/).
+
+## Architettura & scelte tecniche
+
+**Stack**: Expo SDK 57 · React Native 0.86 · React 19 · Expo Router · TypeScript. Target: **web primario**, mobile in seguito.
+
+**Cross-platform first** *(principio guida)*: riusa il più possibile lo stesso codice su web e mobile. Evita scelte device-specific (file `.web.tsx`, rami `Platform.OS`) se non quando una capability differisce davvero; in quel caso isola la parte specifica dietro un piccolo modulo. Vedi [`AGENTS.md`](./AGENTS.md).
+
+**Persistenza (local-first)**: i dati utente (Wishlist, Deck) sono salvati on-device via `@react-native-async-storage/async-storage` — **una sola API KV** che funziona su web e native (niente localStorage/AsyncStorage separati). Forma **relazionale** (`decks`, `deck_entries`, `wishlist_items`); si salvano solo i **riferimenti** alle carte (`cardId`), non i payload. Tutto dietro un **repository** con `exportAll()`, così il futuro passaggio a Neon + Drizzle è un import di dati, non un redesign. → ADR 0001.
+
+**Dati carta**: [YGOPRODeck API](https://ygoprodeck.com/api-guide/), on-demand, con cache persistita via **TanStack Query** (rate limit 20 req/s da rispettare).
+
+**Immagini**: proxy/CDN di caching + disk cache di `expo-image`, per non hotlinkare direttamente (contro i termini YGOPRODeck). Il vero download-e-riospita arriverà col backend. → ADR 0002.
+
+**Formati & validazione**: solo retro format, con **banlist statiche** impacchettate nell'app; validazione **soft** (warning, nessun blocco). → ADR 0003.
+
+**Librerie**: TanStack Query ora. Zustand e Tamagui **rimandati** (non necessari in v1).
+
+---
+
+Progetto creato con [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started
 
