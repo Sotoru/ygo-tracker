@@ -1,5 +1,10 @@
 # Persistenza local-first in forma relazionale (verso Neon + Drizzle)
 
+> **Superseded da [ADR 0005](./0005-auth-e-dati-cloud-via-neon-data-api.md)** (2026-07-20):
+> l'app passa a cloud auth-gated (Neon Data API + RLS). Resta per contesto storico —
+> il seam `Repository` e la forma relazionale progettati qui sono ciò che rende il
+> passaggio un cambio di impl, non un redesign.
+
 I dati utente (Wishlist, Deck) sono salvati on-device via
 `@react-native-async-storage/async-storage` — una sola API KV cross-platform
 (web + native) — in forma **relazionale normalizzata** (`decks`, `deck_entries`,

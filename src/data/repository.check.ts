@@ -74,6 +74,17 @@ async function main() {
   assert.ok(wl.every((i) => !i.obtainedAt), 'setObtained(false) deve azzerare');
   assert.equal(wl.length, 1);
 
+  // deleteCard: rimuove TUTTE le rarità del cardId, lascia intatte le altre carte.
+  // Uso una carta usa-e-getta con 2 rarità; la wishlist torna a 1 riga (invariante a valle).
+  await repo.setWishlistEntries(11111111, [
+    { rarity: 'Ultra Rare', count: 2 },
+    { rarity: 'Secret Rare', count: 1 },
+  ]);
+  await repo.deleteCard(11111111);
+  wl = await repo.getWishlist();
+  assert.ok(!wl.some((i) => i.cardId === 11111111), 'deleteCard deve rimuovere ogni rarità del cardId');
+  assert.equal(wl.length, 1, 'deleteCard non deve toccare le altre carte');
+
   // deck + entries: upsert su (deckId, cardId, zone), id stabile
   const deck = await repo.createDeck('Goat Control', 'goat');
   await repo.setDeckEntry(deck.id, 89631139, 'main', 3);

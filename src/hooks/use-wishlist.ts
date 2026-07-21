@@ -1,7 +1,7 @@
-// Wishlist come "server state locale": TanStack Query sopra il repository.
+// Wishlist come server state: TanStack Query sopra il repository Neon (Data API).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { repository } from '@/data/store';
+import { wishlist as repository } from '@/data/store';
 
 const KEY = ['wishlist'] as const;
 
@@ -23,6 +23,14 @@ export function useSetObtained() {
   return useMutation({
     mutationFn: (e: { cardId: number; obtained: boolean }) =>
       repository.setObtained(e.cardId, e.obtained),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+export function useDeleteCard() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (cardId: number) => repository.deleteCard(cardId),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }

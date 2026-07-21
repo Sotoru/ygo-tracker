@@ -71,6 +71,14 @@ export const getCardsByIds = (ids: number[]): Promise<YgoCard[]> =>
   ids.length ? fetchCards({ id: ids.join(',') }) : Promise.resolve([]);
 
 /**
+ * Più Card per NOME esatto in una sola richiesta (nomi separati da `|`). Usato
+ * dalle banlist statiche (chiave = nome). ~160 nomi ≈ URL 4KB: testato OK.
+ * ponytail: ordine non garantito, riordina il chiamante (per status via banlists).
+ */
+export const getCardsByNames = (names: string[]): Promise<YgoCard[]> =>
+  names.length ? fetchCards({ name: names.join('|') }) : Promise.resolve([]);
+
+/**
  * URL immagine via proxy di caching (weserv), non hotlink diretto a YGOPRODeck.
  * Vedi docs/adr/0002. `expo-image` ci aggiunge la disk cache lato device.
  */

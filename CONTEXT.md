@@ -9,6 +9,15 @@ definizioni in italiano.
 
 ## Language
 
+### User
+
+**User**:
+La persona autenticata (login Google) che possiede la propria `Wishlist` e i
+propri `Deck`. Col passaggio cloud ogni dato è **per-`User`**: utenti diversi non
+vedono i dati l'uno dell'altro. Quando il glossario dice `Wishlist`/`Deck` intende
+sempre *quelli dell'`User` corrente*.
+_Avoid_: Account (record tecnico), profilo, giocatore.
+
 ### Carte
 
 **Card**:

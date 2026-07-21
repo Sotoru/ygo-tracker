@@ -11,21 +11,29 @@ export interface KVStore {
   setItem(key: string, value: string): Promise<void>;
 }
 
-/** Il seam: oggi AsyncStorage, domani un'impl Neon + Drizzle. Vedi docs/adr/0001. */
-export interface Repository {
+/**
+ * La sola parte cablata nell'app oggi: la Wishlist. L'impl viva è `NeonRepository`
+ * (Data API + RLS, client-only, vedi docs/adr/0005); l'impl locale sotto la
+ * soddisfa ancora per i test e come base dei Deck futuri.
+ */
+export interface WishlistRepository {
   getWishlist(): Promise<WishlistItem[]>;
   /**
-   * Riconcilia in UNA sola read-modify-write le rarità di una Card: per ogni
-   * (rarity, count) fa upsert se count>0, rimuove se count<=0; le altre rarità del
-   * cardId restano intatte. Un solo write → niente lost update quando il PrintPicker
-   * conferma più rarità insieme. Se il risultato lascia almeno una rarità desiderata
-   * (count>0) la carta torna Wanted (azzera `obtainedAt` su tutte le sue righe:
-   * invariante "stato per-carta", vedi CONTEXT.md); una pura rimozione non riattiva.
+   * Riconcilia le rarità di una Card: per ogni (rarity, count) fa upsert se
+   * count>0, rimuove se count<=0; le altre rarità del cardId restano intatte. Se
+   * il risultato lascia almeno una rarità desiderata (count>0) la carta torna
+   * Wanted (azzera `obtainedAt` su tutte le sue righe: invariante "stato
+   * per-carta", vedi CONTEXT.md); una pura rimozione non riattiva.
    */
   setWishlistEntries(cardId: number, entries: { rarity: string; count: number }[]): Promise<void>;
   /** Segna/desegna come "Presa" tutte le righe di una Card (stato Obtained, per-carta). */
   setObtained(cardId: number, obtained: boolean): Promise<void>;
+  /** Rimuove COMPLETAMENTE una Card dalla wishlist: tutte le sue righe (ogni rarità). */
+  deleteCard(cardId: number): Promise<void>;
+}
 
+/** Il seam completo: wishlist + deck. Oggi solo l'impl locale lo implementa tutto. Vedi docs/adr/0001. */
+export interface Repository extends WishlistRepository {
   getDecks(): Promise<Deck[]>;
   getDeck(id: string): Promise<{ deck: Deck; entries: DeckEntry[] } | null>;
   createDeck(name: string, format: Format): Promise<Deck>;
@@ -83,6 +91,13 @@ export function createRepository(
       await write(
         KEYS.wishlist,
         items.map((i) => (i.cardId === cardId ? { ...i, obtainedAt } : i)),
+      );
+    },
+    async deleteCard(cardId) {
+      const items = await read<WishlistItem>(KEYS.wishlist);
+      await write(
+        KEYS.wishlist,
+        items.filter((i) => i.cardId !== cardId),
       );
     },
 

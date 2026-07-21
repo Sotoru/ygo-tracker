@@ -29,7 +29,16 @@ export const Spacing = {
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const MaxContentWidth = 960; // knob unico: cambia qui per allargare/stringere il container globale
+
+// Tutti i dialog/modali: mai più larghi del content, centrati, con un gutter su
+// schermi stretti. La % (non width:'100%') lascia il gutter anche su mobile,
+// dove marginHorizontal:'auto' da solo lo azzererebbe. Cross-platform, no Platform.OS.
+export const dialogWidth = {
+  width: '90%',
+  maxWidth: MaxContentWidth,
+  marginHorizontal: 'auto',
+} as const;
 
 // Font MD3: su web usa lo stack Spline Sans (CSS var); su native resta il font
 // di sistema di MD3 (nessun font custom caricato).

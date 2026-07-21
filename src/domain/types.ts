@@ -2,7 +2,7 @@
 // è un import di tabelle e non un redesign. Vedi CONTEXT.MD e docs/adr/0001.
 
 /** Il retro format per cui un Deck è costruito. Elenco estendibile (data-driven). */
-export type Format = 'goat' | 'edison' | 'hat' | 'tengu';
+export type Format = 'goat' | 'edison' | 'hat' | 'tengu' | 'redu';
 
 /** Le tre zone di un Deck. La zona di una Card è in parte determinata dal suo tipo. */
 export type Zone = 'main' | 'extra' | 'side';
@@ -20,11 +20,13 @@ export const COPIES_BY_BAN_STATUS: Record<BanStatus, number> = {
 
 /** Registro dei formati: aggiungere un format = aggiungere una voce, non codice. */
 export const FORMATS: Record<Format, { label: string; poolCutoffDate: string | null }> = {
-  // ponytail: banlist statiche e cutoff reali sono il task dati aperto (ADR 0003).
+  // Banlist statiche popolate in banlists.ts (ADR 0003). poolCutoffDate ("Card Pool")
+  // resta il task dati aperto.
   goat: { label: 'Goat', poolCutoffDate: null },
   edison: { label: 'Edison', poolCutoffDate: null },
   hat: { label: 'HAT', poolCutoffDate: null },
   tengu: { label: 'Tengu', poolCutoffDate: null },
+  redu: { label: 'REDU', poolCutoffDate: null },
 };
 
 // --- "Tabelle" (righe). Si salvano solo dati utente + riferimenti alle carte

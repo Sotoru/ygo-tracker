@@ -8,7 +8,7 @@ App per gestire una wishlist di carte e costruire deck per **retro format** (Goa
 
 **Cross-platform first** *(principio guida)*: riusa il più possibile lo stesso codice su web e mobile. Evita scelte device-specific (file `.web.tsx`, rami `Platform.OS`) se non quando una capability differisce davvero; in quel caso isola la parte specifica dietro un piccolo modulo. Vedi [`AGENTS.md`](./AGENTS.md).
 
-**Persistenza (local-first)**: i dati utente (Wishlist, Deck) sono salvati on-device via `@react-native-async-storage/async-storage` — **una sola API KV** che funziona su web e native (niente localStorage/AsyncStorage separati). Forma **relazionale** (`decks`, `deck_entries`, `wishlist_items`); si salvano solo i **riferimenti** alle carte (`cardId`), non i payload. Tutto dietro un **repository** con `exportAll()`, così il futuro passaggio a Neon + Drizzle è un import di dati, non un redesign. → ADR 0001.
+**Persistenza (local-first)**: i dati utente (Wishlist, Deck) sono salvati on-device via `@react-native-async-storage/async-storage` — **una sola API KV** che funziona su web e native (niente localStorage/AsyncStorage separati). Forma **relazionale** (`decks`, `deck_entries`, `wishlist_items`); si salvano solo i **riferimenti** alle carte (`cardId`), non i payload. Tutto dietro un **repository** con `exportAll()`, così il futuro passaggio a Neon + Drizzle è un import di dati, non un redesign. → ADR 0001. **In transizione a cloud auth-gated** (Neon Auth + Data API + RLS, solo Google), che supera il local-first → ADR 0005.
 
 **Dati carta**: [YGOPRODeck API](https://ygoprodeck.com/api-guide/), on-demand, con cache persistita via **TanStack Query** (rate limit 20 req/s da rispettare).
 

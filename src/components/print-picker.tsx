@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { FlatList, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Button, Dialog, IconButton, Portal, Text } from 'react-native-paper';
 
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { dialogWidth, Spacing } from '@/constants/theme';
 import type { YgoCard } from '@/data/ygoprodeck';
 import type { WishlistItem } from '@/domain/types';
 
@@ -51,7 +51,7 @@ export function PrintPicker({
 
   return (
     <Portal>
-      <Dialog visible onDismiss={onClose} style={styles.dialog}>
+      <Dialog visible onDismiss={onClose} style={dialogWidth}>
         <Dialog.Title numberOfLines={2}>{card.name}</Dialog.Title>
 
         {rarities.length === 0 ? (
@@ -106,14 +106,6 @@ export function PrintPicker({
 }
 
 const styles = StyleSheet.create({
-  // largo quanto il body dell'app: width 100% con cap a MaxContentWidth,
-  // centrato. marginHorizontal 'auto' assorbe il resto quando è cappato
-  // (niente overflow) e sostituisce il margine 26 di default di Paper.
-  dialog: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    marginHorizontal: 'auto',
-  },
   scrollArea: {
     paddingHorizontal: Spacing.four,
   },

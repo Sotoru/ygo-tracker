@@ -18,7 +18,7 @@ export const queryClient = new QueryClient({
   },
 });
 
-const persister = createAsyncStoragePersister({ storage: AsyncStorage });
+export const persister = createAsyncStoragePersister({ storage: AsyncStorage });
 
 // La cache persistita è pensata per i DATI CARTA stabili (byId/byIds). Le ricerche
 // per nome sono effimere: NON persisterle, altrimenti un risultato vuoto resta

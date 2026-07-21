@@ -1,15 +1,18 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { DarkTheme as NavDarkTheme, DefaultTheme as NavDefaultTheme, Stack, ThemeProvider, usePathname } from 'expo-router';
-import { useColorScheme } from 'react-native';
-import { PaperProvider } from 'react-native-paper';
+import { StyleSheet, useColorScheme } from 'react-native';
+import { ActivityIndicator, PaperProvider } from 'react-native-paper';
 
+import { CardDetailDialog } from '@/components/card-detail-dialog';
+import { ThemedView } from '@/components/themed-view';
 import {
   paperBlueDarkTheme,
   paperBlueLightTheme,
   paperDarkTheme,
   paperLightTheme,
 } from '@/constants/theme';
+import { useSession } from '@/data/auth';
 import { persistOptions, queryClient } from '@/data/query-client';
 
 // I componenti Paper leggono il PaperProvider; la navigazione legge il
@@ -37,12 +40,39 @@ const paperSettings = {
   ),
 };
 
+// Gate: la sessione decide cosa è raggiungibile. Cloud-only (docs/adr/0005):
+// niente sessione → solo /sign-in; con sessione → l'app. Stack.Protected (Expo Router v57).
+function RootNavigator() {
+  const { data: session, isPending } = useSession();
+
+  if (isPending) {
+    return (
+      <ThemedView style={styles.loading}>
+        <ActivityIndicator />
+      </ThemedView>
+    );
+  }
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Protected guard={!!session}>
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="banlist/[format]" />
+      </Stack.Protected>
+      <Stack.Protected guard={!session}>
+        <Stack.Screen name="sign-in" />
+      </Stack.Protected>
+    </Stack>
+  );
+}
+
 export default function RootLayout() {
   const dark = useColorScheme() === 'dark';
-  // Accento in base alla tab attiva: /deck = viola MD3 default; resto (Wishlist) = blu.
-  // Un solo PaperProvider al root → anche il Dialog (Portal) eredita l'accento giusto.
+  // Accento in base alla tab attiva: /deck e /banlist = viola MD3 default; resto
+  // (Wishlist, sign-in) = blu. Un solo PaperProvider al root → anche il Dialog
+  // (Portal) eredita l'accento giusto.
   const pathname = usePathname();
-  const blue = !pathname.startsWith('/deck');
+  const blue = !pathname.startsWith('/deck') && !pathname.startsWith('/banlist');
   const paper = blue
     ? dark
       ? paperBlueDarkTheme
@@ -56,9 +86,15 @@ export default function RootLayout() {
     <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
       <PaperProvider theme={paper} settings={paperSettings}>
         <ThemeProvider value={nav}>
-          <Stack screenOptions={{ headerShown: false }} />
+          <RootNavigator />
+          {/* Montato una volta: qualsiasi schermata apre il dettaglio via useCardDetail */}
+          <CardDetailDialog />
         </ThemeProvider>
       </PaperProvider>
     </PersistQueryClientProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+});

@@ -2,7 +2,9 @@
 // repository (addToWishlist / setDeckEntry).
 import { useQuery } from '@tanstack/react-query';
 
-import { getCardById, getCardsByIds, searchCardsByName } from '@/data/ygoprodeck';
+import { BANLISTS } from '@/domain/banlists';
+import type { Format } from '@/domain/types';
+import { getCardById, getCardsByIds, getCardsByNames, searchCardsByName } from '@/data/ygoprodeck';
 
 export function useCardSearch(query: string) {
   const q = query.trim();
@@ -32,5 +34,16 @@ export function useCardsByIds(ids: number[]) {
     queryKey: ['cards', 'byIds', key],
     queryFn: () => getCardsByIds(ids),
     enabled: ids.length > 0,
+  });
+}
+
+// Tutte le Card di una banlist statica in una richiesta (per nome esatto). Dato
+// immutabile → staleTime lungo: si scarica una volta e resta in cache.
+export function useBanlistCards(format: Format) {
+  const names = Object.values(BANLISTS[format]).flat();
+  return useQuery({
+    queryKey: ['cards', 'banlist', format],
+    queryFn: () => getCardsByNames(names),
+    staleTime: 1000 * 60 * 60 * 24, // 24h: la banlist non cambia
   });
 }
