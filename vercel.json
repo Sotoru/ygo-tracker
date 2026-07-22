@@ -1,0 +1,9 @@
+{
+  "buildCommand": "npx expo export -p web",
+  "outputDirectory": "dist",
+  "framework": null,
+  "rewrites": [
+    { "source": "/deck/:id", "destination": "/deck/[id].html" },
+    { "source": "/banlist/:format", "destination": "/banlist/[format].html" }
+  ]
+}
