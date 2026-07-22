@@ -58,6 +58,8 @@ function RootNavigator() {
       <Stack.Protected guard={!!session}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="banlist/[format]" />
+        <Stack.Screen name="deck/new" />
+        <Stack.Screen name="deck/[id]" />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" />

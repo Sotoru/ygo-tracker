@@ -9,6 +9,71 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      decks: {
+        Row: {
+          cover_card_id: number | null
+          created_at: string
+          format: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cover_card_id?: number | null
+          created_at?: string
+          format: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          cover_card_id?: number | null
+          created_at?: string
+          format?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      deck_entries: {
+        Row: {
+          card_id: number
+          count: number
+          deck_id: string
+          id: string
+          user_id: string
+          zone: string
+        }
+        Insert: {
+          card_id: number
+          count: number
+          deck_id: string
+          id?: string
+          user_id?: string
+          zone: string
+        }
+        Update: {
+          card_id?: number
+          count?: number
+          deck_id?: string
+          id?: string
+          user_id?: string
+          zone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deck_entries_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "decks"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       wishlist_items: {
         Row: {
           added_at: string

@@ -49,6 +49,7 @@ export interface Deck {
   id: string;
   name: string;
   format: Format;
+  coverCardId: number | null; // scelta ESPLICITA della carta "in evidenza"; null = fallback alla prima carta
   createdAt: string;
   updatedAt: string;
 }
@@ -60,6 +61,13 @@ export interface DeckEntry {
   cardId: number; // id YGOPRODeck della Card
   zone: Zone;
   count: number; // 1..3
+}
+
+/** Voce da importare (es. da un .ydk): senza id/deckId, li assegna il repository. */
+export interface DeckEntryInput {
+  cardId: number;
+  zone: Zone;
+  count: number;
 }
 
 /** Dump relazionale completo, pronto per l'import in Postgres/Drizzle. */

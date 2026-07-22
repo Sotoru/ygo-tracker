@@ -109,6 +109,66 @@ async function main() {
   await repo.deleteDeck(deck.id);
   assert.equal((await repo.exportAll()).deckEntries.length, 0, 'delete deck deve rimuovere le sue entries');
 
+  // createDeck con entries (import .ydk): inserisce le voci in blocco
+  const imported = await repo.createDeck('Import', 'goat', [
+    { cardId: 89631139, zone: 'main', count: 3 },
+    { cardId: 1861629, zone: 'extra', count: 1 },
+  ]);
+  assert.equal((await repo.getDeck(imported.id))!.entries.length, 2, 'createDeck deve inserire le entries');
+
+  // getDecks porta il conteggio carte (somma dei count) senza caricare le entries
+  const summaries = await repo.getDecks();
+  assert.equal(summaries.find((d) => d.id === imported.id)!.cardCount, 4, 'cardCount = somma dei count');
+
+  // copertina: senza scelta esplicita, fallback = Main con card_id minimo (poi extra, poi side)
+  const cover = await repo.createDeck('Cover', 'goat', [
+    { cardId: 1861629, zone: 'extra', count: 1 },
+    { cardId: 89631139, zone: 'main', count: 3 }, // main, ma card_id > del prossimo
+    { cardId: 46986414, zone: 'main', count: 1 }, // main con card_id minimo → è la copertina
+  ]);
+  let cov = (await repo.getDecks()).find((d) => d.id === cover.id)!;
+  assert.equal(cov.coverCardId, 46986414, 'fallback: Main con card_id minimo');
+  // scelta esplicita: vince sul fallback (se ancora tra le carte)
+  await repo.setDeckCover(cover.id, 89631139);
+  cov = (await repo.getDecks()).find((d) => d.id === cover.id)!;
+  assert.equal(cov.coverCardId, 89631139, 'la copertina esplicita vince sul fallback');
+  assert.equal((await repo.getDeck(cover.id))!.deck.coverCardId, 89631139, 'getDeck espone la scelta esplicita');
+  // copertina esplicita non più nel deck → torna al fallback
+  await repo.setDeckEntry(cover.id, 89631139, 'main', 0);
+  cov = (await repo.getDecks()).find((d) => d.id === cover.id)!;
+  assert.equal(cov.coverCardId, 46986414, 'copertina esplicita rimossa dal deck → fallback');
+  // azzerare la copertina → fallback
+  await repo.setDeckCover(cover.id, null);
+  assert.equal((await repo.getDeck(cover.id))!.deck.coverCardId, null, 'setDeckCover(null) azzera la scelta');
+
+  // setDeckFormat: cambia il format del deck giusto, lascia intatti gli altri
+  await repo.setDeckFormat(cover.id, 'edison');
+  assert.equal((await repo.getDeck(cover.id))!.deck.format, 'edison', 'setDeckFormat deve cambiare il format');
+  assert.equal((await repo.getDeck(imported.id))!.deck.format, 'goat', 'setDeckFormat non deve toccare gli altri deck');
+
+  // setDeckName: rinomina il deck giusto (clock deterministico: niente check sul bump)
+  await repo.setDeckName(cover.id, 'Rinominato');
+  assert.equal((await repo.getDeck(cover.id))!.deck.name, 'Rinominato', 'setDeckName deve cambiare il nome');
+  assert.equal((await repo.getDeck(imported.id))!.deck.name, 'Import', 'setDeckName non deve toccare gli altri deck');
+
+  // replaceDeckEntries: rimpiazza IN BLOCCO le entries (Salva editor / re-import)
+  await repo.replaceDeckEntries(cover.id, [
+    { cardId: 55144522, zone: 'main', count: 2 }, // Pot of Greed
+    { cardId: 1861629, zone: 'extra', count: 1 },
+  ]);
+  let after = await repo.getDeck(cover.id);
+  assert.equal(after!.entries.length, 2, 'replace deve sostituire tutte le entries');
+  assert.equal(after!.entries.find((e) => e.cardId === 55144522)!.count, 2);
+  assert.equal(
+    (await repo.getDeck(imported.id))!.entries.length,
+    2,
+    'replace non deve toccare le entries di altri deck',
+  );
+  // replace con lista vuota = deck svuotato
+  await repo.replaceDeckEntries(cover.id, []);
+  after = await repo.getDeck(cover.id);
+  assert.equal(after!.entries.length, 0, 'replace con [] deve svuotare il deck');
+
   console.log('OK repository self-check');
 }
 

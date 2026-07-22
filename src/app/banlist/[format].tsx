@@ -64,7 +64,7 @@ export default function BanlistScreen() {
     <ThemedView style={styles.screen}>
       {/* barra cappata a 800 e centrata come il resto dell'app (sfondo trasparente) */}
       <Appbar.Header style={styles.appbar}>
-        <Appbar.BackAction onPress={() => router.back()} />
+        <Appbar.BackAction onPress={() => (router.canGoBack() ? router.back() : router.replace('/deck'))} />
         <Appbar.Content title={known ? FORMATS[format].label : 'Banlist'} />
         {/* Toggle nome carte: l'icona mostra lo stato corrente (occhio aperto =
             visibile). Bool → un tap, niente menu. */}

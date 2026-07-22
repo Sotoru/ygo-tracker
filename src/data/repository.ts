@@ -1,6 +1,14 @@
 // Repository local-first, puro: nessun import React Native, così è testabile in
 // node (vedi repository.check.ts). Il cablaggio ad AsyncStorage sta in store.ts.
-import type { Deck, DeckEntry, Format, Snapshot, WishlistItem, Zone } from '@/domain/types';
+import type { Deck, DeckEntry, DeckEntryInput, Format, Snapshot, WishlistItem, Zone } from '@/domain/types';
+
+/**
+ * Deck + conteggio carte, read-model per la lista (evita di caricare le entries per ogni deck).
+ * Qui `coverCardId` è la copertina RISOLTA (esplicita ?? prima carta), non la scelta grezza
+ * della riga `Deck`: la lista mostra un'immagine e non ha mai bisogno del valore esplicito.
+ * `null` solo se il deck è vuoto. Il dettaglio usa invece `Deck.coverCardId` (esplicito) per la stella.
+ */
+export type DeckSummary = Deck & { cardCount: number };
 
 /**
  * KV minimale cross-platform. AsyncStorage soddisfa questa firma direttamente
@@ -32,17 +40,48 @@ export interface WishlistRepository {
   deleteCard(cardId: number): Promise<void>;
 }
 
-/** Il seam completo: wishlist + deck. Oggi solo l'impl locale lo implementa tutto. Vedi docs/adr/0001. */
-export interface Repository extends WishlistRepository {
-  getDecks(): Promise<Deck[]>;
+/** La parte Deck del seam. L'impl viva è `neonDecks` (Neon + RLS); l'impl locale sotto resta per i test. */
+export interface DeckRepository {
+  /** Lista dei Deck dell'utente col conteggio carte, senza caricarne le entries. */
+  getDecks(): Promise<DeckSummary[]>;
   getDeck(id: string): Promise<{ deck: Deck; entries: DeckEntry[] } | null>;
-  createDeck(name: string, format: Format): Promise<Deck>;
+  /** Crea un Deck; se `entries` è dato (import .ydk), le inserisce in blocco. */
+  createDeck(name: string, format: Format, entries?: DeckEntryInput[]): Promise<Deck>;
+  /** Rinomina un Deck. Bumpa updatedAt: è un edit significativo. */
+  setDeckName(deckId: string, name: string): Promise<void>;
+  /**
+   * Rimpiazza IN BLOCCO le entries di un Deck con `entries` (delete-all + insert).
+   * Sorgente unica per il Salva dell'editor (l'intera bozza) e per il re-import .ydk.
+   * Bumpa updatedAt. La cover esplicita resta: se la carta non c'è più, `resolveCover` fa fallback.
+   */
+  replaceDeckEntries(deckId: string, entries: DeckEntryInput[]): Promise<void>;
+  /** Imposta (o azzera, con `null`) la carta "in evidenza" esplicita di un Deck. */
+  setDeckCover(deckId: string, cardId: number | null): Promise<void>;
+  /** Cambia il Format (banlist) di un Deck. Bumpa updatedAt: è un edit significativo. */
+  setDeckFormat(deckId: string, format: Format): Promise<void>;
   deleteDeck(id: string): Promise<void>;
+}
+
+/** Il seam completo: wishlist + deck. Oggi solo l'impl locale lo implementa tutto. Vedi docs/adr/0001. */
+export interface Repository extends WishlistRepository, DeckRepository {
   /** Upsert su (deckId, cardId, zone); count <= 0 rimuove la voce. */
   setDeckEntry(deckId: string, cardId: number, zone: Zone, count: number): Promise<void>;
 
   /** Dump relazionale completo, pronto per l'import in Postgres/Drizzle. */
   exportAll(): Promise<Snapshot>;
+}
+
+const ZONE_RANK: Record<Zone, number> = { main: 0, extra: 1, side: 2 };
+
+/**
+ * Copertina risolta di un Deck: la scelta esplicita se ancora presente tra le carte,
+ * altrimenti la "prima" carta = Main con card_id minimo, poi extra, poi side (deterministico:
+ * `deck_entries` non memorizza ordine). `null` solo se il deck è vuoto.
+ */
+export function resolveCover(coverCardId: number | null, entries: { cardId: number; zone: Zone }[]): number | null {
+  if (coverCardId != null && entries.some((e) => e.cardId === coverCardId)) return coverCardId;
+  const first = [...entries].sort((a, b) => ZONE_RANK[a.zone] - ZONE_RANK[b.zone] || a.cardId - b.cardId)[0];
+  return first?.cardId ?? null;
 }
 
 // wishlist_items_v2: la wishlist ora vive su (cardId, rarity), non più (…, setCode).
@@ -102,7 +141,16 @@ export function createRepository(
     },
 
     async getDecks() {
-      return read<Deck>(KEYS.decks);
+      const decks = await read<Deck>(KEYS.decks);
+      const entries = await read<DeckEntry>(KEYS.entries);
+      return decks.map((d) => {
+        const own = entries.filter((e) => e.deckId === d.id);
+        return {
+          ...d,
+          cardCount: own.reduce((n, e) => n + e.count, 0),
+          coverCardId: resolveCover(d.coverCardId, own), // read-model: copertina risolta (vedi DeckSummary)
+        };
+      });
     },
     async getDeck(id) {
       const deck = (await read<Deck>(KEYS.decks)).find((d) => d.id === id);
@@ -110,12 +158,52 @@ export function createRepository(
       const entries = (await read<DeckEntry>(KEYS.entries)).filter((e) => e.deckId === id);
       return { deck, entries };
     },
-    async createDeck(name, format) {
+    async createDeck(name, format, entries) {
       const decks = await read<Deck>(KEYS.decks);
       const ts = now();
-      const deck: Deck = { id: newId(), name, format, createdAt: ts, updatedAt: ts };
+      const deck: Deck = { id: newId(), name, format, coverCardId: null, createdAt: ts, updatedAt: ts };
       await write(KEYS.decks, [...decks, deck]);
+      if (entries?.length) {
+        const rows = await read<DeckEntry>(KEYS.entries);
+        await write(KEYS.entries, [
+          ...rows,
+          ...entries.map((e) => ({ id: newId(), deckId: deck.id, ...e })),
+        ]);
+      }
       return deck;
+    },
+    async setDeckName(deckId, name) {
+      const decks = await read<Deck>(KEYS.decks);
+      await write(
+        KEYS.decks,
+        decks.map((d) => (d.id === deckId ? { ...d, name, updatedAt: now() } : d)),
+      );
+    },
+    async replaceDeckEntries(deckId, entries) {
+      // delete-all delle entries di QUESTO deck + reinserimento in blocco della bozza.
+      const rows = await read<DeckEntry>(KEYS.entries);
+      const others = rows.filter((e) => e.deckId !== deckId);
+      await write(KEYS.entries, [...others, ...entries.map((e) => ({ id: newId(), deckId, ...e }))]);
+      const decks = await read<Deck>(KEYS.decks);
+      await write(
+        KEYS.decks,
+        decks.map((d) => (d.id === deckId ? { ...d, updatedAt: now() } : d)),
+      );
+    },
+    async setDeckCover(deckId, cardId) {
+      // scelta estetica: NON tocco updatedAt (non riordino la lista per un cambio copertina).
+      const decks = await read<Deck>(KEYS.decks);
+      await write(
+        KEYS.decks,
+        decks.map((d) => (d.id === deckId ? { ...d, coverCardId: cardId } : d)),
+      );
+    },
+    async setDeckFormat(deckId, format) {
+      const decks = await read<Deck>(KEYS.decks);
+      await write(
+        KEYS.decks,
+        decks.map((d) => (d.id === deckId ? { ...d, format, updatedAt: now() } : d)),
+      );
     },
     async deleteDeck(id) {
       const decks = await read<Deck>(KEYS.decks);

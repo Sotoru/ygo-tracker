@@ -105,6 +105,14 @@ _Avoid_: F&L list corrente/live.
 Lo stato di una `Card` nella `Banlist` di un `Format`: **Forbidden** (0 copie),
 **Limited** (1), **Semi-Limited** (2), **Unlimited** (3, default).
 
+**Coherence** (coerenza `Deck` ↔ `Banlist`):
+Se il `Deck` rispetta la `Banlist` del suo `Format` (nessuna `Card` oltre le copie
+concesse dal suo `Ban Status`). È un **indicatore**, non un vincolo: un `Deck`
+incoerente si crea e si salva comunque — la coerenza si *mostra* (una spunta in
+cima al `Deck`), non si *impone*. L'import di un `Deck` non è mai bloccato o
+respinto dalla `Banlist`.
+_Avoid_: Validazione, deck legale/illegale (non c'è un gate).
+
 **Card Pool**:
 L'insieme delle `Card` legali in un `Format`, limitato all'era del formato
 (carte uscite entro un cutoff). Approssimato per data di uscita (`enddate`).
