@@ -34,6 +34,7 @@ import type { YgoCard } from '@/data/ygoprodeck';
 import { FORMATS, type DeckEntryInput, type Format, type Zone } from '@/domain/types';
 import { parseYdk } from '@/domain/ydk';
 import { suggestedZone } from '@/domain/zone';
+import { useSession } from '@/data/auth';
 import { useCardDetail } from '@/hooks/use-card-detail';
 import { useCardSearch, useCardsByIds } from '@/hooks/use-cards';
 import {
@@ -43,6 +44,7 @@ import {
   useSetDeckCover,
   useSetDeckFormat,
   useSetDeckName,
+  useSetDeckPublic,
 } from '@/hooks/use-decks';
 
 const MIN_CELL_WIDTH = 120;
@@ -60,11 +62,15 @@ export default function DeckDetailScreen() {
   const openDetail = useCardDetail((s) => s.open);
   const { id } = useLocalSearchParams<{ id: string }>();
 
+  // Sempre montato (con o senza sessione): loggato = proprietario (RLS → solo righe
+  // proprie), quindi controlli di modifica. Anonimo = vista read-only del deck pubblico.
+  const { data: session } = useSession();
   const { data, isLoading, isError } = useDeck(id);
   const del = useDeleteDeck();
   const setCover = useSetDeckCover();
   const setFormat = useSetDeckFormat();
   const setName = useSetDeckName();
+  const setPublic = useSetDeckPublic();
   const replace = useReplaceDeckEntries(); // sorgente unica: Salva editor + re-import
   const coverCardId = data?.deck.coverCardId ?? null; // scelta ESPLICITA (la stella piena)
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -185,12 +191,19 @@ export default function DeckDetailScreen() {
           </>
         ) : (
           <>
-            <Appbar.BackAction onPress={() => (router.canGoBack() ? router.back() : router.replace('/deck'))} />
+            <Appbar.BackAction
+              onPress={() =>
+                router.canGoBack() ? router.back() : router.replace(session ? '/deck' : '/public-decks')
+              }
+            />
             <Appbar.Content
               title={data?.deck.name ?? 'Deck'}
               subtitle={data ? FORMATS[data.deck.format]?.label : undefined}
             />
-            {data ? (
+            {data?.deck.isPublic ? (
+              <Appbar.Action icon="earth" accessibilityLabel="Deck pubblico" onPress={() => {}} />
+            ) : null}
+            {data && session ? (
               <>
                 <Appbar.Action icon="pencil" accessibilityLabel="Modifica carte" onPress={enterEdit} />
                 <Menu
@@ -231,6 +244,14 @@ export default function DeckDetailScreen() {
                         }}
                       />
                       <Menu.Item leadingIcon="playlist-edit" title="Cambia banlist" onPress={() => setMenu('format')} />
+                      <Menu.Item
+                        leadingIcon={data.deck.isPublic ? 'lock' : 'earth'}
+                        title={data.deck.isPublic ? 'Rendi privato' : 'Rendi pubblico'}
+                        onPress={() => {
+                          setMenu(null);
+                          setPublic.mutate({ deckId: id, isPublic: !data.deck.isPublic });
+                        }}
+                      />
                       <Menu.Item
                         leadingIcon="file-upload"
                         title="Reimporta .ydk"
@@ -396,26 +417,31 @@ export default function DeckDetailScreen() {
                               frameType={card.frameType}
                               subtitle={[]}>
                               <View style={styles.stepper}>
-                                <IconButton
-                                  icon="minus"
-                                  size={16}
-                                  mode="contained-tonal"
-                                  disabled={e.count <= 1}
-                                  accessibilityLabel="Una copia in meno"
-                                  onPress={() => bump(e.cardId, sec.zone, -1)}
-                                />
-                                <Text variant="titleMedium">{e.count}</Text>
-                                <IconButton
-                                  icon="plus"
-                                  size={16}
-                                  mode="contained-tonal"
-                                  disabled={e.count >= MAX_COPIES}
-                                  accessibilityLabel="Una copia in più"
-                                  onPress={() => bump(e.cardId, sec.zone, 1)}
-                                />
+                                <View style={styles.stepGroup}>
+                                  <IconButton
+                                    icon="minus"
+                                    size={16}
+                                    mode="contained-tonal"
+                                    style={styles.stepBtn}
+                                    disabled={e.count <= 1}
+                                    accessibilityLabel="Una copia in meno"
+                                    onPress={() => bump(e.cardId, sec.zone, -1)}
+                                  />
+                                  <Text variant="titleMedium">{e.count}</Text>
+                                  <IconButton
+                                    icon="plus"
+                                    size={16}
+                                    mode="contained-tonal"
+                                    style={styles.stepBtn}
+                                    disabled={e.count >= MAX_COPIES}
+                                    accessibilityLabel="Una copia in più"
+                                    onPress={() => bump(e.cardId, sec.zone, 1)}
+                                  />
+                                </View>
                                 <IconButton
                                   icon="delete"
                                   size={16}
+                                  style={styles.stepBtn}
                                   accessibilityLabel="Rimuovi carta"
                                   onPress={() => removeEntry(e.cardId, sec.zone)}
                                 />
@@ -458,7 +484,7 @@ export default function DeckDetailScreen() {
                         topRight={
                           isCover ? ( // scelta fatta: stella piena, allineata al badge, si azzera dal menu
                             <Icon source="star" color={colors.primary} size={24} />
-                          ) : hasCover ? undefined : ( // pick-mode: la stella compare finché non si sceglie
+                          ) : hasCover || !session ? undefined : ( // pick-mode: stella solo al proprietario, finché non sceglie
                             <Pressable
                               hitSlop={8}
                               accessibilityLabel="Usa come copertina"
@@ -493,7 +519,9 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  stepper: { flexDirection: 'row', alignItems: 'center' },
+  stepper: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  stepGroup: { flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'space-between' }, // − 2 + riempiono lo spazio; il cestino resta a destra a dimensione fissa
+  stepBtn: { margin: 0 }, // azzera il margine 6 di Paper → i 3 controlli entrano nella cella stretta
   zoneChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one, justifyContent: 'flex-end', maxWidth: 200 },
   msg: { textAlign: 'center', paddingVertical: Spacing.six, width: '100%' },
 });

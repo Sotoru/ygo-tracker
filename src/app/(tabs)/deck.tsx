@@ -69,15 +69,12 @@ export default function DeckScreen() {
         </ScrollView>
       )}
 
-      <View pointerEvents="box-none" style={[styles.fabContainer, { bottom: Spacing.four + BottomTabInset }]}>
-        <View pointerEvents="box-none" style={styles.fabRow}>
-          <FAB
-            icon="plus"
-            accessibilityLabel="Nuovo deck"
-            onPress={() => router.push('/deck/new')}
-          />
-        </View>
-      </View>
+      <FAB
+        icon="plus"
+        accessibilityLabel="Nuovo deck"
+        style={[styles.fab, { bottom: Spacing.four + BottomTabInset }]}
+        onPress={() => router.push('/deck/new')}
+      />
     </ThemedView>
   );
 }
@@ -87,8 +84,6 @@ const styles = StyleSheet.create({
   content: { width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center', paddingBottom: Spacing.six },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   msg: { textAlign: 'center', paddingVertical: Spacing.six },
-  // FAB ancorato al bordo destro del container (non dello schermo): stessa maxWidth del content.
-  // Outer full-width centra la row; la row cappa a maxWidth e spinge il FAB a destra.
-  fabContainer: { position: 'absolute', left: 0, right: 0, alignItems: 'center' },
-  fabRow: { width: '100%', maxWidth: MaxContentWidth, alignItems: 'flex-end' },
+  // FAB standard MD3 ancorato al bordo dello schermo (allineamento identico web/native).
+  fab: { position: 'absolute', right: Spacing.three },
 });

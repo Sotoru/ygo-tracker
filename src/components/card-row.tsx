@@ -4,7 +4,7 @@
 // riga per i risultati di ricerca e per la wishlist salvata: cambia solo il
 // bottone trailing (aggiungi vs rimuovi).
 import { Image } from "expo-image";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
 import { Icon, List, Text, useTheme } from "react-native-paper";
 
 import { Spacing } from "@/constants/theme";
@@ -15,6 +15,13 @@ const chunk = <T,>(arr: T[], size: number): T[][] => {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
+};
+
+// separa il conteggio finale " ×N" dal nome, così il ×N resta sempre visibile e
+// a troncare è il nome. Riga senza conteggio (es. "Ultra Rare") → count assente.
+const splitCount = (line: string): { name: string; count?: string } => {
+  const m = line.match(/^(.*?)\s(\d+x)$/);
+  return m ? { name: m[1], count: m[2] } : { name: line };
 };
 
 export function CardRow({
@@ -39,7 +46,11 @@ export function CardRow({
   const { colors } = useTheme();
   const lines =
     subtitle ??
-    (rarity ? [`${rarity}${count ? ` ×${count}` : ""}`] : ["Nessuna stampa"]);
+    (rarity ? [`${rarity}${count ? ` ${count}x` : ""}`] : ["Nessuna stampa"]);
+  // Su schermo stretto le colonne da 4 troncano le rarità ("Ultra Rare ×2" → "Ultra…"):
+  // sotto i 600px le impilo tutte in un'unica colonna a piena larghezza.
+  const narrow = useWindowDimensions().width < 600;
+  const cols = narrow ? [lines] : chunk(lines, 4);
 
   return (
     <List.Item
@@ -61,19 +72,29 @@ export function CardRow({
       description={({ color, ellipsizeMode }) => (
         // ogni 4 righe una colonna, colonne affiancate
         <View style={styles.descRow}>
-          {chunk(lines, 4).map((col, ci) => (
+          {cols.map((col, ci) => (
             <View key={ci} style={styles.descCol}>
-              {col.map((line, i) => (
-                <Text
-                  key={i}
-                  variant="bodyMedium"
-                  numberOfLines={1}
-                  ellipsizeMode={ellipsizeMode}
-                  style={{ color }}
-                >
-                  {line}
-                </Text>
-              ))}
+              {col.map((line, i) => {
+                const { name, count } = splitCount(line);
+                return (
+                  // ×N fisso all'inizio + nome che tronca in coda (numberOfLines 1)
+                  <View key={i} style={styles.line}>
+                    {count ? (
+                      <Text variant="bodyMedium" style={[styles.lineCount, { color }]}>
+                        {`${count} `}
+                      </Text>
+                    ) : null}
+                    <Text
+                      variant="bodyMedium"
+                      numberOfLines={1}
+                      ellipsizeMode={ellipsizeMode}
+                      style={[styles.lineName, { color }]}
+                    >
+                      {name}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
           ))}
         </View>
@@ -84,11 +105,15 @@ export function CardRow({
       contentStyle={styles.content}
       left={() =>
         imageUrl ? (
-          <Pressable onPress={onPress} disabled={!onPress} accessibilityLabel={onPress ? `Dettaglio ${name}` : undefined}>
+          <Pressable
+            onPress={onPress}
+            disabled={!onPress}
+            accessibilityLabel={onPress ? `Dettaglio ${name}` : undefined}
+            style={styles.thumb}>
             <Image
               source={{ uri: cardImageUrl(imageUrl, { width: 260 }) }}
-              style={styles.thumb}
-              contentFit="contain"
+              style={styles.thumbImage}
+              contentFit="cover"
             />
           </Pressable>
         ) : (
@@ -122,11 +147,29 @@ const styles = StyleSheet.create({
   descCol: {
     flexShrink: 1,
   },
+  line: {
+    flexDirection: "row",
+    alignItems: "baseline", // nome + ×N sulla stessa linea di base
+    flexWrap: "nowrap", // il ×N non deve mai andare a capo
+  },
+  lineName: {
+    flexShrink: 1, // solo il nome si comprime/tronca…
+    minWidth: 0, // …e su web deve poter scendere sotto la larghezza del contenuto
+  },
+  lineCount: {
+    flexShrink: 0, // il ×N resta sempre intero e sulla stessa riga
+  },
   thumb: {
-    width: 120,
-    height: 120, // artwork cropped 1:1
+    width: 120, // larghezza fissa
+    minHeight: 120, // pavimento (artwork cropped 1:1); alignSelf stretch la fa crescere
+    // con l'altezza della riga (row Paper senza alignItems → stretch di default)
+    alignSelf: "stretch",
     borderRadius: Spacing.two,
-    alignSelf: "center",
+    overflow: "hidden", // il cover rispetta gli angoli arrotondati
+  },
+  thumbImage: {
+    flex: 1, // riempie l'altezza del box; contentFit cover ritaglia senza stirare
+    width: "100%",
   },
   right: {
     justifyContent: "flex-start",

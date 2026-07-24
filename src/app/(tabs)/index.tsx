@@ -4,7 +4,7 @@
 // matita di una carta si apre il PrintPicker per scegliere rarità + copie.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Platform, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { ActivityIndicator, Button, Dialog, IconButton, List, Portal, Searchbar, Snackbar, Text, useTheme } from 'react-native-paper';
+import { ActivityIndicator, Button, Dialog, Divider, IconButton, List, Menu, Portal, Searchbar, Snackbar, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { CardCell } from '@/components/card-cell';
@@ -14,6 +14,7 @@ import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, dialogWidth, MaxContentWidth, Spacing } from '@/constants/theme';
 import type { YgoCard } from '@/data/ygoprodeck';
 import type { WishlistItem } from '@/domain/types';
+import { shortRarity } from '@/domain/rarity';
 import { useCardDetail } from '@/hooks/use-card-detail';
 import { useSettings } from '@/hooks/use-settings';
 import { useCardSearch, useCardsByIds } from '@/hooks/use-cards';
@@ -21,7 +22,7 @@ import { useDeleteCard, useSetObtained, useSetWishlistEntries, useWishlist } fro
 
 // ["Ultra Rare ×2", "Secret Rare ×1"] — una riga per rarità, ordinate come nel
 // picker (prima apparizione in card_sets). La CardRow le impila una sotto l'altra.
-function summarize(items: WishlistItem[], card?: YgoCard): string[] {
+function summarize(items: WishlistItem[], card: YgoCard | undefined, short: boolean): string[] {
   const order = [...new Set((card?.card_sets ?? []).map((p) => p.set_rarity))];
   const rank = (r: string) => {
     const i = order.indexOf(r);
@@ -29,7 +30,7 @@ function summarize(items: WishlistItem[], card?: YgoCard): string[] {
   };
   return [...items]
     .sort((a, b) => rank(a.rarity) - rank(b.rarity))
-    .map((i) => `${i.rarity} ×${i.count}`);
+    .map((i) => `${short ? shortRarity(i.rarity) : i.rarity} ${i.count}x`);
 }
 
 // il valore massimo di un campo tra le righe di una carta (per l'ordinamento "più recenti in alto")
@@ -87,40 +88,107 @@ function SavedCardRow({
   onRestore: (cardId: number, name: string) => void;
   onDelete: (cardId: number, name: string) => void;
 }) {
-  const Presenter = useSettings((s) => s.cardView) === 'grid' ? CardCell : CardRow;
+  const view = useSettings((s) => s.cardView);
+  const rarityShort = useSettings((s) => s.rarityShort);
+  const Presenter = view === 'grid' ? CardCell : CardRow;
   const openDetail = useCardDetail((s) => s.open);
+  const { colors } = useTheme();
+  // Su schermo stretto in vista lista i due IconButton comprimono l'immagine e le
+  // righe rarità: le azioni passano in un context menu (kebab). Condizione responsive,
+  // non Platform.OS → stesso comportamento su web stretto. 600 = soglia già usata per la griglia.
+  const { width } = useWindowDimensions();
+  const kebab = view === 'list' && width < 600;
+  const [menuOpen, setMenuOpen] = useState(false);
   const name = card?.name ?? '…';
+
+  const actions = kebab ? (
+    <Menu
+      visible={menuOpen}
+      onDismiss={() => setMenuOpen(false)}
+      anchorPosition="bottom"
+      anchor={
+        <IconButton
+          icon="dots-vertical"
+          accessibilityLabel="Altre azioni"
+          onPress={() => setMenuOpen(true)}
+        />
+      }>
+      {obtained ? (
+        <>
+          <Menu.Item
+            leadingIcon="restore"
+            title="Rimetti tra le carte da prendere"
+            onPress={() => {
+              setMenuOpen(false);
+              onRestore(cardId, name);
+            }}
+          />
+          <Divider />
+          <Menu.Item
+            leadingIcon="delete"
+            title="Elimina dalla wishlist"
+            titleStyle={{ color: colors.error }}
+            onPress={() => {
+              setMenuOpen(false);
+              onDelete(cardId, name);
+            }}
+          />
+        </>
+      ) : (
+        <>
+          <Menu.Item
+            leadingIcon="pencil"
+            title="Modifica rarità e copie"
+            disabled={!card}
+            onPress={() => {
+              setMenuOpen(false);
+              if (card) onEdit(card);
+            }}
+          />
+          <Menu.Item
+            leadingIcon="check"
+            title="Segna come presa"
+            onPress={() => {
+              setMenuOpen(false);
+              onCheck(cardId);
+            }}
+          />
+        </>
+      )}
+    </Menu>
+  ) : obtained ? (
+    <View style={styles.actions}>
+      <IconButton
+        icon="delete"
+        accessibilityLabel="Elimina dalla wishlist"
+        onPress={() => onDelete(cardId, name)}
+      />
+      <IconButton
+        icon="restore"
+        accessibilityLabel="Rimetti tra le carte da prendere"
+        onPress={() => onRestore(cardId, name)}
+      />
+    </View>
+  ) : (
+    <View style={styles.actions}>
+      <IconButton
+        icon="pencil"
+        accessibilityLabel="Modifica rarità e copie"
+        disabled={!card}
+        onPress={() => card && onEdit(card)}
+      />
+      <IconButton icon="check" accessibilityLabel="Segna come presa" onPress={() => onCheck(cardId)} />
+    </View>
+  );
+
   return (
     <Presenter
       name={name}
       owned={obtained}
       imageUrl={card?.card_images[0]?.image_url_cropped}
-      subtitle={summarize(items, card)}
+      subtitle={summarize(items, card, rarityShort)}
       onPress={card ? () => openDetail(card) : undefined}>
-      {obtained ? (
-        <View style={styles.actions}>
-          <IconButton
-            icon="delete"
-            accessibilityLabel="Elimina dalla wishlist"
-            onPress={() => onDelete(cardId, name)}
-          />
-          <IconButton
-            icon="restore"
-            accessibilityLabel="Rimetti tra le carte da prendere"
-            onPress={() => onRestore(cardId, name)}
-          />
-        </View>
-      ) : (
-        <View style={styles.actions}>
-          <IconButton
-            icon="pencil"
-            accessibilityLabel="Modifica rarità e copie"
-            disabled={!card}
-            onPress={() => card && onEdit(card)}
-          />
-          <IconButton icon="check" accessibilityLabel="Segna come presa" onPress={() => onCheck(cardId)} />
-        </View>
-      )}
+      {actions}
     </Presenter>
   );
 }

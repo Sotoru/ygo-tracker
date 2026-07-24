@@ -26,6 +26,10 @@ export default function Root({ children }: PropsWithChildren) {
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 
+        {/* Titolo statico app-wide: nessuna schermata usa più expo-router/head, quindi
+            questo vale ovunque e resta invariato alla navigazione client. */}
+        <title>YGO Tracker</title>
+
         {preconnectOrigins.map((origin) => (
           <link key={origin} rel="preconnect" href={origin} crossOrigin="use-credentials" />
         ))}

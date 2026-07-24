@@ -76,6 +76,18 @@ export function useSetDeckFormat() {
   });
 }
 
+export function useSetDeckPublic() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { deckId: string; isPublic: boolean }) =>
+      repository.setDeckPublic(v.deckId, v.isPublic),
+    onSuccess: (_d, v) => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: [...KEY, v.deckId] });
+    },
+  });
+}
+
 export function useDeleteDeck() {
   const qc = useQueryClient();
   return useMutation({

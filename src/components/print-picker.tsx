@@ -34,7 +34,7 @@ export function PrintPicker({
   const [counts, setCounts] = useState<Record<string, number>>(() =>
     Object.fromEntries(rarities.map((r) => [r, savedCount(r)])),
   );
-  // cap allo ~80% dell'altezza schermo: lascia respiro per titolo+azioni e
+  // cap al 60% dell'altezza schermo: lascia respiro per titolo+azioni e
   // resta centrato (il Modal di Paper centra in verticale). Bounded → la
   // FlatList scrolla e non collassa a 0 su web.
   const { height } = useWindowDimensions();
@@ -59,7 +59,7 @@ export function PrintPicker({
             <Text variant="bodyMedium">Nessuna stampa disponibile per questa carta.</Text>
           </Dialog.Content>
         ) : (
-          <Dialog.ScrollArea style={[styles.scrollArea, { maxHeight: height * 0.8 }]}>
+          <Dialog.ScrollArea style={[styles.scrollArea, { maxHeight: height * 0.6 }]}>
             <FlatList
               data={rarities}
               keyExtractor={(r) => r}

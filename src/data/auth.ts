@@ -12,7 +12,10 @@ import type { Database } from '@/database.types';
 import { env } from '@/env';
 
 export const client = createClient<Database>({
-  auth: { adapter: BetterAuthReactAdapter(), url: env.EXPO_PUBLIC_NEON_AUTH_URL },
+  // allowAnonymous: senza sessione la Data API usa un token anonimo → l'RLS espone
+  // i soli deck pubblici (deck detail pubblico). NON tocca `useSession`, che resta
+  // null da sloggato: il gate Stack.Protected regge. Vedi docs/adr/0005.
+  auth: { adapter: BetterAuthReactAdapter(), url: env.EXPO_PUBLIC_NEON_AUTH_URL, allowAnonymous: true },
   dataApi: { url: env.EXPO_PUBLIC_NEON_DATA_API_URL },
 });
 

@@ -25,11 +25,13 @@ type Settings = {
   setBanlistColumns: (n: number) => void;
   banlistShowTitles: boolean;
   setBanlistShowTitles: (show: boolean) => void;
+  rarityShort: boolean;
+  setRarityShort: (short: boolean) => void;
 };
 
 // Web: localStorage (sincrono → idrata prima del paint, niente flash), guardato
 // per lo static render dove window non esiste. Native: AsyncStorage (async).
-const storage = createJSONStorage<Pick<Settings, 'cardView' | 'banlistColumns' | 'banlistShowTitles'>>(
+const storage = createJSONStorage<Pick<Settings, 'cardView' | 'banlistColumns' | 'banlistShowTitles' | 'rarityShort'>>(
   () =>
   Platform.OS === 'web'
     ? typeof window !== 'undefined'
@@ -47,6 +49,8 @@ export const useSettings = create<Settings>()(
       setBanlistColumns: (banlistColumns) => set({ banlistColumns }),
       banlistShowTitles: true,
       setBanlistShowTitles: (banlistShowTitles) => set({ banlistShowTitles }),
+      rarityShort: false,
+      setRarityShort: (rarityShort) => set({ rarityShort }),
     }),
     {
       name: 'settings',
@@ -56,6 +60,7 @@ export const useSettings = create<Settings>()(
         cardView: s.cardView,
         banlistColumns: s.banlistColumns,
         banlistShowTitles: s.banlistShowTitles,
+        rarityShort: s.rarityShort,
       }),
     }
   )

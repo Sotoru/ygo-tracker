@@ -5,7 +5,7 @@ import { client } from '@/data/auth';
 import type { Deck, DeckEntry, Format, Zone } from '@/domain/types';
 import { resolveCover, type DeckRepository } from './repository';
 
-type DeckRow = { id: string; name: string; format: string; cover_card_id: number | null; created_at: string; updated_at: string };
+type DeckRow = { id: string; name: string; format: string; cover_card_id: number | null; is_public: boolean; created_at: string; updated_at: string };
 type EntryRow = { id: string; deck_id: string; card_id: number; zone: string; count: number };
 
 const toDeck = (r: DeckRow): Deck => ({
@@ -13,6 +13,7 @@ const toDeck = (r: DeckRow): Deck => ({
   name: r.name,
   format: r.format as Format, // il DB tiene text; il dominio restringe (validato lato app)
   coverCardId: r.cover_card_id,
+  isPublic: r.is_public,
   createdAt: r.created_at,
   updatedAt: r.updated_at,
 });
@@ -114,6 +115,12 @@ export const neonDecks: DeckRepository = {
       .from('decks')
       .update({ format, updated_at: new Date().toISOString() })
       .eq('id', deckId);
+    if (error) throw error;
+  },
+
+  async setDeckPublic(deckId, isPublic) {
+    // cambio di visibilità: NON tocco updated_at (come setDeckCover). RLS limita alle proprie righe.
+    const { error } = await client.from('decks').update({ is_public: isPublic }).eq('id', deckId);
     if (error) throw error;
   },
 

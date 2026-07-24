@@ -41,7 +41,7 @@ export function CardCell({
 }) {
   const { colors } = useTheme();
   const lines =
-    subtitle ?? (rarity ? [`${rarity}${count ? ` ×${count}` : ''}`] : ['Nessuna stampa']);
+    subtitle ?? (rarity ? [`${rarity}${count ? ` ${count}x` : ''}`] : ['Nessuna stampa']);
   const background = frameTint(frameType) ?? colors.surfaceVariant;
 
   return (

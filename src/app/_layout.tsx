@@ -59,11 +59,15 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="banlist/[format]" />
         <Stack.Screen name="deck/new" />
-        <Stack.Screen name="deck/[id]" />
       </Stack.Protected>
       <Stack.Protected guard={!session}>
         <Stack.Screen name="sign-in" />
       </Stack.Protected>
+      {/* Sempre montati (con o senza sessione), ma dichiarati DOPO i guard: al logout
+          il fallback è la prima schermata accessibile (sign-in), non una rotta dinamica.
+          Il dettaglio mostra i controlli solo se loggato; la lista pubblica è aperta a tutti. */}
+      <Stack.Screen name="deck/[id]" />
+      <Stack.Screen name="public-decks" />
     </Stack>
   );
 }

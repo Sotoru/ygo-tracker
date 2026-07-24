@@ -1,7 +1,7 @@
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Dialog, IconButton, List, Menu, Portal, SegmentedButtons, useTheme } from 'react-native-paper';
+import { Dialog, IconButton, List, Menu, Portal, SegmentedButtons, Switch, useTheme } from 'react-native-paper';
 
 import { dialogWidth, MaxContentWidth, Spacing } from '@/constants/theme';
 import { signOut } from '@/data/auth';
@@ -12,7 +12,7 @@ export default function AppTabs() {
   const { colors } = useTheme();
   const value = usePathname().startsWith('/deck') ? 'deck' : 'wishlist';
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const { cardView, setCardView } = useSettings();
+  const { cardView, setCardView, rarityShort, setRarityShort } = useSettings();
   const [viewMenuOpen, setViewMenuOpen] = useState(false);
   const viewLabel = CARD_VIEW_OPTIONS.find((o) => o.value === cardView)?.label ?? cardView;
 
@@ -71,6 +71,13 @@ export default function AppTabs() {
                 />
               ))}
             </Menu>
+            {/* Booleano → Switch (un tap). Abbrevia le rarità nelle righe wishlist. */}
+            <List.Item
+              title="Rarità abbreviate"
+              left={(props) => <List.Icon {...props} icon="format-letter-case" />}
+              right={() => <Switch value={rarityShort} onValueChange={setRarityShort} />}
+              onPress={() => setRarityShort(!rarityShort)}
+            />
             {/* Il dialog stesso fa da conferma: niente step extra. signOut() svuota
                 cache e persister e azzera la sessione → il gate reindirizza a /sign-in. */}
             <List.Item

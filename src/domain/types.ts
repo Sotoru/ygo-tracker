@@ -50,6 +50,7 @@ export interface Deck {
   name: string;
   format: Format;
   coverCardId: number | null; // scelta ESPLICITA della carta "in evidenza"; null = fallback alla prima carta
+  isPublic: boolean; // visibilità: privato di default; se true è leggibile dal ruolo anonymous (RLS)
   createdAt: string;
   updatedAt: string;
 }

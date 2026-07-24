@@ -59,6 +59,8 @@ export interface DeckRepository {
   setDeckCover(deckId: string, cardId: number | null): Promise<void>;
   /** Cambia il Format (banlist) di un Deck. Bumpa updatedAt: è un edit significativo. */
   setDeckFormat(deckId: string, format: Format): Promise<void>;
+  /** Rende il Deck pubblico/privato. NON bumpa updatedAt: cambio di visibilità, non di contenuto. */
+  setDeckPublic(deckId: string, isPublic: boolean): Promise<void>;
   deleteDeck(id: string): Promise<void>;
 }
 
@@ -161,7 +163,7 @@ export function createRepository(
     async createDeck(name, format, entries) {
       const decks = await read<Deck>(KEYS.decks);
       const ts = now();
-      const deck: Deck = { id: newId(), name, format, coverCardId: null, createdAt: ts, updatedAt: ts };
+      const deck: Deck = { id: newId(), name, format, coverCardId: null, isPublic: false, createdAt: ts, updatedAt: ts };
       await write(KEYS.decks, [...decks, deck]);
       if (entries?.length) {
         const rows = await read<DeckEntry>(KEYS.entries);
@@ -203,6 +205,14 @@ export function createRepository(
       await write(
         KEYS.decks,
         decks.map((d) => (d.id === deckId ? { ...d, format, updatedAt: now() } : d)),
+      );
+    },
+    async setDeckPublic(deckId, isPublic) {
+      // cambio di visibilità, non di contenuto: NON tocco updatedAt (come setDeckCover).
+      const decks = await read<Deck>(KEYS.decks);
+      await write(
+        KEYS.decks,
+        decks.map((d) => (d.id === deckId ? { ...d, isPublic } : d)),
       );
     },
     async deleteDeck(id) {

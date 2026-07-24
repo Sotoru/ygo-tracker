@@ -12,6 +12,7 @@ create table public.decks (
   name          text     not null,
   format        text     not null,                          -- 'goat' | 'edison' | ... (validato lato app)
   cover_card_id integer,                                     -- carta "in evidenza" (id YGOPRODeck); null = fallback alla prima carta
+  is_public  boolean     not null    default false,          -- visibilità: privato di default; se true leggibile dal ruolo anonymous
   created_at timestamptz not null    default now(),
   updated_at timestamptz not null    default now()
 );
@@ -41,5 +42,19 @@ create policy deck_entries_owner on public.deck_entries
   using (user_id = auth.user_id())
   with check (user_id = auth.user_id());
 
+-- Accesso pubblico READ-ONLY per il ruolo anonymous: solo i deck marcati is_public
+-- (e le loro entries). I deck privati e la scrittura restano owner-only.
+-- Scelta (grilling 2026-07-23): NON apriamo ai loggati i pubblici altrui, così
+-- "sessione + dato = proprietario" resta vero e non serve un ownership check lato UI.
+create policy decks_public_read on public.decks
+  for select to anonymous
+  using (is_public);
+
+create policy deck_entries_public_read on public.deck_entries
+  for select to anonymous
+  using (exists (select 1 from public.decks d where d.id = deck_entries.deck_id and d.is_public));
+
 grant select, insert, update, delete on public.decks        to authenticated;
 grant select, insert, update, delete on public.deck_entries to authenticated;
+grant select on public.decks        to anonymous;
+grant select on public.deck_entries to anonymous;
