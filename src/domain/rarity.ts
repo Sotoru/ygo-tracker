@@ -2,18 +2,18 @@
 // (nessun valore letto dal BE a runtime): nome BE (set_rarity) → sigla mostrata.
 // Modifica/aggiungi qui; rarità non mappata resta col nome pieno (mai criptico).
 const RARITY_SHORT: Record<string, string> = {
-  Common: "Comm",
+  Common: "Common",
   Rare: "Rare",
-  "Super Rare": "SR",
-  "Ultra Rare": "UR",
-  "Secret Rare": "SR",
+  "Super Rare": "Super",
+  "Ultra Rare": "Ultra",
+  "Secret Rare": "Secret",
   "Ultimate Rare": "Ultimate",
-  "Ghost Rare": "GR",
+  "Ghost Rare": "Ghost",
   "Collector's Rare": "Collector",
-  "Starlight Rare": "StarL",
+  "Starlight Rare": "Starlight",
   "Prismatic Secret Rare": "Prismatic",
   "Platinum Secret Rare": "Platinum",
-  "Quarter Century Secret Rare": "QCR",
+  "Quarter Century Secret Rare": "Quarter",
 };
 
 // nome pieno BE → sigla; sconosciuto → nome pieno invariato.

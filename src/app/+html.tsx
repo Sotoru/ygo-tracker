@@ -39,6 +39,10 @@ export default function Root({ children }: PropsWithChildren) {
         ))}
 
         <ScrollViewStyleReset />
+        {/* ScrollViewStyleReset non azzera il margin di default di <body> (8px):
+            senza questo si vede una striscia bianca fissa in alto e in basso,
+            tagliata da body{overflow:hidden} invece di essere scrollabile. */}
+        <style dangerouslySetInnerHTML={{ __html: `body{margin:0}` }} />
       </head>
       <body>{children}</body>
     </html>
