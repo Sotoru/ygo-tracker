@@ -15,7 +15,7 @@ import { FORMATS } from '@/domain/types';
 import { useCardsByIds } from '@/hooks/use-cards';
 import { useDecks } from '@/hooks/use-decks';
 
-const MIN_CELL_WIDTH = 120; // stessa griglia responsive del dettaglio deck
+const MIN_CELL_WIDTH = 105; // stessa griglia responsive del dettaglio deck
 
 export default function DeckScreen() {
   const router = useRouter();

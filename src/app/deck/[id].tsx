@@ -47,7 +47,7 @@ import {
   useSetDeckPublic,
 } from '@/hooks/use-decks';
 
-const MIN_CELL_WIDTH = 120;
+const MIN_CELL_WIDTH = 105;
 const FORMAT_LIST = Object.keys(FORMATS) as Format[]; // data-driven: aggiungere un format basta in FORMATS
 const ZONES: { zone: Zone; label: string }[] = [
   { zone: 'main', label: 'Main' },

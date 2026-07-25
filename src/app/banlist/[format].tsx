@@ -19,7 +19,7 @@ import { BANLIST_COLUMN_OPTIONS, useSettings } from '@/hooks/use-settings';
 
 // Sotto questa larghezza le celle diventano illeggibili: la scelta utente viene
 // ridotta a quante colonne ci stanno davvero.
-const MIN_CELL_WIDTH = 120;
+const MIN_CELL_WIDTH = 105;
 
 // Ordine di visualizzazione scelto: dal meno al più restrittivo.
 const SECTIONS: { status: Exclude<BanStatus, 'unlimited'>; label: string }[] = [

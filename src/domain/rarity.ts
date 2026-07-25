@@ -7,12 +7,12 @@ const RARITY_SHORT: Record<string, string> = {
   "Super Rare": "SR",
   "Ultra Rare": "UR",
   "Secret Rare": "SR",
-  "Ultimate Rare": "Ulti",
+  "Ultimate Rare": "Ultimate",
   "Ghost Rare": "GR",
-  "Collector's Rare": "CR",
-  "Starlight Rare": "SLight",
-  "Prismatic Secret Rare": "Prism SR",
-  "Platinum Secret Rare": "Plat SR",
+  "Collector's Rare": "Collector",
+  "Starlight Rare": "StarL",
+  "Prismatic Secret Rare": "Prismatic",
+  "Platinum Secret Rare": "Platinum",
   "Quarter Century Secret Rare": "QCR",
 };
 
