@@ -1,6 +1,7 @@
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { DarkTheme as NavDarkTheme, DefaultTheme as NavDefaultTheme, Stack, ThemeProvider, usePathname } from 'expo-router';
+import { useEffect, useRef } from 'react';
 import { StyleSheet, useColorScheme } from 'react-native';
 import { ActivityIndicator, PaperProvider } from 'react-native-paper';
 
@@ -12,7 +13,7 @@ import {
   paperDarkTheme,
   paperLightTheme,
 } from '@/constants/theme';
-import { useSession } from '@/data/auth';
+import { DEV_AUTOLOGIN, signInDev, useSession } from '@/data/auth';
 import { persistOptions, queryClient } from '@/data/query-client';
 
 // I componenti Paper leggono il PaperProvider; la navigazione legge il
@@ -44,6 +45,17 @@ const paperSettings = {
 // niente sessione → solo /sign-in; con sessione → l'app. Stack.Protected (Expo Router v57).
 function RootNavigator() {
   const { data: session, isPending } = useSession();
+
+  // Dev-only: se EXPO_PUBLIC_DEV_AUTOLOGIN è configurato, salta /sign-in e loggati
+  // con l'utente seed. Un solo tentativo per apertura app (niente retry-loop se
+  // l'utente seed non esiste ancora: resti su /sign-in → /dev-signup per crearlo).
+  const triedDevAutoLogin = useRef(false);
+  useEffect(() => {
+    if (DEV_AUTOLOGIN && !session && !isPending && !triedDevAutoLogin.current) {
+      triedDevAutoLogin.current = true;
+      signInDev();
+    }
+  }, [session, isPending]);
 
   if (isPending) {
     return (

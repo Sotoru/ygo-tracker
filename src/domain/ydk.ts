@@ -34,3 +34,22 @@ export function parseYdk(text: string): DeckEntryInput[] {
   }
   return [...acc.values()];
 }
+
+const ZONE_ORDER: Zone[] = ['main', 'extra', 'side'];
+const ZONE_HEADER: Record<Zone, string> = { main: '#main', extra: '#extra', side: '!side' };
+
+/**
+ * Inverso di `parseYdk`: `count` si espande in passcode ripetuti. Le 3 sezioni
+ * sono sempre presenti (anche vuote); l'ordine delle carte dentro ciascuna
+ * segue l'ordine di `entries`, nessun resort.
+ */
+export function buildYdk(entries: DeckEntryInput[]): string {
+  const lines = ['#created by ygo-tracker'];
+  for (const zone of ZONE_ORDER) {
+    lines.push(ZONE_HEADER[zone]);
+    for (const e of entries.filter((e) => e.zone === zone)) {
+      for (let i = 0; i < e.count; i++) lines.push(String(e.cardId));
+    }
+  }
+  return lines.join('\n');
+}

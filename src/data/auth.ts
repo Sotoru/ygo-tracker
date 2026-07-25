@@ -35,3 +35,15 @@ export async function signOut() {
   queryClient.clear();
   await persister.removeClient();
 }
+
+/** Credenziali dell'utente dev seed, solo se `EXPO_PUBLIC_DEV_AUTOLOGIN` è configurato per intero.
+ *  `null` altrove (env assente, o build prod dove `__DEV__` è false): niente signIn/signUp dev possibile. */
+export const DEV_AUTOLOGIN =
+  __DEV__ && env.EXPO_PUBLIC_DEV_AUTOLOGIN && env.EXPO_PUBLIC_DEV_AUTOLOGIN_EMAIL && env.EXPO_PUBLIC_DEV_AUTOLOGIN_PASSWORD
+    ? { email: env.EXPO_PUBLIC_DEV_AUTOLOGIN_EMAIL, password: env.EXPO_PUBLIC_DEV_AUTOLOGIN_PASSWORD }
+    : null;
+
+/** Login automatico con l'utente dev seed (chiamato dal root layout in dev). */
+export function signInDev() {
+  return client.auth.signIn.email(DEV_AUTOLOGIN!);
+}

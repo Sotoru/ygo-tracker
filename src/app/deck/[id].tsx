@@ -20,6 +20,7 @@ import {
   Menu,
   Portal,
   Searchbar,
+  Snackbar,
   Text,
   TextInput,
   useTheme,
@@ -30,9 +31,10 @@ import { CardRow } from '@/components/card-row';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing, dialogWidth } from '@/constants/theme';
 import { pickTextFile } from '@/data/pick-file';
+import { shareTextFile } from '@/data/share-file';
 import type { YgoCard } from '@/data/ygoprodeck';
 import { FORMATS, type DeckEntryInput, type Format, type Zone } from '@/domain/types';
-import { parseYdk } from '@/domain/ydk';
+import { buildYdk, parseYdk } from '@/domain/ydk';
 import { suggestedZone } from '@/domain/zone';
 import { useSession } from '@/data/auth';
 import { useCardDetail } from '@/hooks/use-card-detail';
@@ -55,6 +57,9 @@ const ZONES: { zone: Zone; label: string }[] = [
   { zone: 'side', label: 'Side' },
 ];
 const MAX_COPIES = 3; // regola copie YGO nello stepper (il DB resta permissivo 1..9)
+
+// Nome file da esportare: slug del nome deck, fallback se resta vuoto dopo lo strip.
+const slugify = (name: string) => name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'deck';
 
 export default function DeckDetailScreen() {
   const router = useRouter();
@@ -156,6 +161,14 @@ export default function DeckDetailScreen() {
     replace.mutate({ deckId: id, entries: parseYdk(picked.text) });
   };
 
+  const [exportUnavailable, setExportUnavailable] = useState(false);
+  const onExport = async () => {
+    setMenu(null);
+    if (!data) return;
+    const ok = await shareTextFile(`${slugify(data.deck.name)}.ydk`, buildYdk(entries));
+    if (!ok) setExportUnavailable(true);
+  };
+
   const { width } = useWindowDimensions();
   const available = Math.min(width, MaxContentWidth) - Spacing.three * 2;
   const columns = Math.max(1, Math.floor((available + Spacing.two) / (MIN_CELL_WIDTH + Spacing.two)));
@@ -203,9 +216,9 @@ export default function DeckDetailScreen() {
             {data?.deck.isPublic ? (
               <Appbar.Action icon="earth" accessibilityLabel="Deck pubblico" onPress={() => {}} />
             ) : null}
-            {data && session ? (
+            {data ? (
               <>
-                <Appbar.Action icon="pencil" accessibilityLabel="Modifica carte" onPress={enterEdit} />
+                {session ? <Appbar.Action icon="pencil" accessibilityLabel="Modifica carte" onPress={enterEdit} /> : null}
                 <Menu
                   visible={menu != null}
                   onDismiss={() => setMenu(null)}
@@ -225,51 +238,60 @@ export default function DeckDetailScreen() {
                     ))
                   ) : (
                     <>
-                      <Menu.Item
-                        leadingIcon="rename-box"
-                        title="Rinomina"
-                        onPress={() => {
-                          setMenu(null);
-                          setRenameText(data.deck.name);
-                          setRenameOpen(true);
-                        }}
-                      />
-                      <Menu.Item
-                        leadingIcon="star-off"
-                        title="Reset carta in evidenza"
-                        disabled={!hasCover}
-                        onPress={() => {
-                          setMenu(null);
-                          setCover.mutate({ deckId: id, cardId: null });
-                        }}
-                      />
-                      <Menu.Item leadingIcon="playlist-edit" title="Cambia banlist" onPress={() => setMenu('format')} />
-                      <Menu.Item
-                        leadingIcon={data.deck.isPublic ? 'lock' : 'earth'}
-                        title={data.deck.isPublic ? 'Rendi privato' : 'Rendi pubblico'}
-                        onPress={() => {
-                          setMenu(null);
-                          setPublic.mutate({ deckId: id, isPublic: !data.deck.isPublic });
-                        }}
-                      />
-                      <Menu.Item
-                        leadingIcon="file-upload"
-                        title="Reimporta .ydk"
-                        onPress={() => {
-                          setMenu(null);
-                          setReimportOpen(true);
-                        }}
-                      />
-                      <Divider />
-                      <Menu.Item
-                        leadingIcon="delete"
-                        title="Elimina deck"
-                        titleStyle={{ color: colors.error }}
-                        onPress={() => {
-                          setMenu(null);
-                          setConfirmOpen(true);
-                        }}
-                      />
+                      {session ? (
+                        <>
+                          <Menu.Item
+                            leadingIcon="rename-box"
+                            title="Rinomina"
+                            onPress={() => {
+                              setMenu(null);
+                              setRenameText(data.deck.name);
+                              setRenameOpen(true);
+                            }}
+                          />
+                          <Menu.Item
+                            leadingIcon="star-off"
+                            title="Reset carta in evidenza"
+                            disabled={!hasCover}
+                            onPress={() => {
+                              setMenu(null);
+                              setCover.mutate({ deckId: id, cardId: null });
+                            }}
+                          />
+                          <Menu.Item leadingIcon="playlist-edit" title="Cambia banlist" onPress={() => setMenu('format')} />
+                          <Menu.Item
+                            leadingIcon={data.deck.isPublic ? 'lock' : 'earth'}
+                            title={data.deck.isPublic ? 'Rendi privato' : 'Rendi pubblico'}
+                            onPress={() => {
+                              setMenu(null);
+                              setPublic.mutate({ deckId: id, isPublic: !data.deck.isPublic });
+                            }}
+                          />
+                          <Menu.Item
+                            leadingIcon="file-upload"
+                            title="Reimporta .ydk"
+                            onPress={() => {
+                              setMenu(null);
+                              setReimportOpen(true);
+                            }}
+                          />
+                        </>
+                      ) : null}
+                      <Menu.Item leadingIcon="file-download" title="Esporta .ydk" onPress={onExport} />
+                      {session ? (
+                        <>
+                          <Divider />
+                          <Menu.Item
+                            leadingIcon="delete"
+                            title="Elimina deck"
+                            titleStyle={{ color: colors.error }}
+                            onPress={() => {
+                              setMenu(null);
+                              setConfirmOpen(true);
+                            }}
+                          />
+                        </>
+                      ) : null}
                     </>
                   )}
                 </Menu>
@@ -321,6 +343,10 @@ export default function DeckDetailScreen() {
             <Button onPress={onReimport}>Scegli file</Button>
           </Dialog.Actions>
         </Dialog>
+
+        <Snackbar visible={exportUnavailable} onDismiss={() => setExportUnavailable(false)} style={dialogWidth}>
+          Condivisione non disponibile su questo dispositivo.
+        </Snackbar>
       </Portal>
 
       {isLoading || cardsLoading ? (

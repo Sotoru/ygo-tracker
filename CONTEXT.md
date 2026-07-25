@@ -25,6 +25,20 @@ La carta astratta di gioco: nome, effetto, ATK/DEF, tipo. Una sola, indipendente
 da dove e come è stampata. Un `Deck` è fatto di `Card`.
 _Avoid_: Carta stampata (quella è una `Print`).
 
+**Card Type** (Monster / Spell / Trap):
+La categoria di gioco di una `Card`, derivata dal `frameType` della fonte
+(YGOPRODeck): **Monster** comprende tutti i frame mostro (Normal/Effect/
+Ritual/Fusion/Synchro/Xyz/Link, incluse le varianti Pendulum), **Spell** e
+**Trap** sono gli altri due. È un attributo della `Card`, indipendente dalla
+`Zone`: una `Card` di tipo Monster può stare in Main o Extra secondo il suo
+sotto-tipo, mentre Spell/Trap stanno sempre in Main o Side (vedi `Extra Deck`).
+Usato per raggruppare visivamente le `Card` all'interno di una `Zone`
+(impostazione utente "raggruppa per tipologia" nel dettaglio `Deck`); non
+determina mai l'appartenenza a una `Zone`.
+_Avoid_: Categoria (già usato per l'archetipo/sottocategoria YGOPRODeck nel
+dettaglio carta), tipologia (termine italiano informale — il canonico è Card
+Type).
+
 **Print**:
 Una pubblicazione concreta di una `Card`, identificata da `Card` + `Set` +
 `Rarity` (chiave naturale: `set_code` + rarità). Della stessa `Card` esistono

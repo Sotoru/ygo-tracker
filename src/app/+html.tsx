@@ -24,7 +24,11 @@ export default function Root({ children }: PropsWithChildren) {
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+        {/* Colora la UI di Safari (barra sotto) invece del bianco di default. Valori
+            MD3 background chiaro/scuro (quasi identici tra tema blu e default). */}
+        <meta name="theme-color" content="#FFFBFE" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#1C1B1F" media="(prefers-color-scheme: dark)" />
 
         {/* Titolo statico app-wide: nessuna schermata usa più expo-router/head, quindi
             questo vale ovunque e resta invariato alla navigazione client. */}

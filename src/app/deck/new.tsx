@@ -8,7 +8,7 @@ import { Appbar, Button, Chip, HelperText, Text, TextInput, useTheme } from 'rea
 
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { pickTextFile } from '@/data/pick-file';
+import { pickTextFile, pickTextFiles } from '@/data/pick-file';
 import { FORMATS, type DeckEntryInput, type Format } from '@/domain/types';
 import { parseYdk } from '@/domain/ydk';
 import { useCreateDeck } from '@/hooks/use-decks';
@@ -22,6 +22,7 @@ export default function NewDeckScreen() {
   const [format, setFormat] = useState<Format>('goat');
   const [entries, setEntries] = useState<DeckEntryInput[]>([]);
   const [importError, setImportError] = useState(false);
+  const [isImportingMultiple, setIsImportingMultiple] = useState(false);
 
   const cardCount = entries.reduce((n, e) => n + e.count, 0);
 
@@ -35,6 +36,28 @@ export default function NewDeckScreen() {
       if (!name.trim()) setName(picked.name.replace(/\.[^.]+$/, ''));
     } catch {
       setImportError(true);
+    }
+  }
+
+  // Import multiplo: un deck per file (il nome del deck viene dal filename),
+  // niente staging in `entries` — a differenza del singolo, qui si crea subito.
+  async function onImportMultiple() {
+    setImportError(false);
+    setIsImportingMultiple(true);
+    try {
+      const picked = await pickTextFiles();
+      for (const file of picked) {
+        await create.mutateAsync({
+          name: file.name.replace(/\.[^.]+$/, ''),
+          format,
+          entries: parseYdk(file.text),
+        });
+      }
+      if (picked.length) router.replace('/deck');
+    } catch {
+      setImportError(true);
+    } finally {
+      setIsImportingMultiple(false);
     }
   }
 
@@ -68,9 +91,22 @@ export default function NewDeckScreen() {
           ))}
         </View>
 
-        <Button mode="outlined" icon="file-upload" onPress={onImport} style={styles.import}>
-          Importa .ydk
-        </Button>
+        <Text variant="labelLarge" style={styles.sectionLabel}>
+          Import
+        </Text>
+        <View style={styles.chips}>
+          <Button mode="outlined" icon="file-upload" onPress={onImport} disabled={isImportingMultiple}>
+            Importa .ydk
+          </Button>
+          <Button
+            mode="outlined"
+            icon="file-multiple"
+            onPress={onImportMultiple}
+            loading={isImportingMultiple}
+            disabled={isImportingMultiple}>
+            Importa più .ydk
+          </Button>
+        </View>
         {importError ? (
           <HelperText type="error" visible>
             Impossibile leggere il file.
@@ -113,6 +149,5 @@ const styles = StyleSheet.create({
   },
   sectionLabel: { marginBottom: -Spacing.two },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  import: { alignSelf: 'flex-start' },
   create: { marginTop: Spacing.two },
 });

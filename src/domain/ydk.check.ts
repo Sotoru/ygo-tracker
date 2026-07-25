@@ -1,7 +1,7 @@
 // Self-check del parser .ydk. Esegui: npx tsx src/domain/ydk.check.ts
 import assert from 'node:assert/strict';
 
-import { parseYdk } from './ydk';
+import { buildYdk, parseYdk } from './ydk';
 
 // File tipico: header ignorato, CRLF, passcode ripetuti (= copie), tutte e tre le zone.
 const sample = [
@@ -41,5 +41,36 @@ assert.deepEqual(parseYdk('12345\n#main\n67890'), [{ cardId: 67890, zone: 'main'
 
 // file vuoto → nessuna voce
 assert.deepEqual(parseYdk(''), []);
+
+// buildYdk: inverso di parseYdk. count si espande, sezioni sempre tutte e 3.
+const built = buildYdk([
+  { cardId: 89631139, zone: 'main', count: 3 },
+  { cardId: 46986414, zone: 'main', count: 1 },
+  { cardId: 1861629, zone: 'extra', count: 1 },
+]);
+assert.deepEqual(built.split('\n'), [
+  '#created by ygo-tracker',
+  '#main',
+  '89631139',
+  '89631139',
+  '89631139',
+  '46986414',
+  '#extra',
+  '1861629',
+  '!side',
+]);
+
+// round-trip: parseYdk(buildYdk(entries)) riproduce le stesse voci (a meno dell'ordine delle chiavi)
+assert.deepEqual(
+  parseYdk(built),
+  [
+    { cardId: 89631139, zone: 'main', count: 3 },
+    { cardId: 46986414, zone: 'main', count: 1 },
+    { cardId: 1861629, zone: 'extra', count: 1 },
+  ],
+);
+
+// deck vuoto: 3 header, zero righe carta
+assert.equal(buildYdk([]), '#created by ygo-tracker\n#main\n#extra\n!side');
 
 console.log('OK ydk self-check');

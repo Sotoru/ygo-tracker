@@ -9,13 +9,23 @@ export interface PickedFile {
   text: string;
 }
 
-/** Apre la UI di sistema; null se l'utente annulla. Nessun filtro MIME: `.ydk` non è un tipo registrato. */
-export async function pickTextFile(): Promise<PickedFile | null> {
-  const res = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
-  if (res.canceled) return null;
-  const asset = res.assets[0];
+async function readAsset(asset: DocumentPicker.DocumentPickerAsset): Promise<PickedFile> {
   // Web: DocumentPicker espone il File del browser → .text(). Native: leggo dal uri
   // in cache con la File API di expo-file-system.
   const text = asset.file ? await asset.file.text() : await new File(asset.uri).text();
   return { name: asset.name, text };
+}
+
+/** Apre la UI di sistema; null se l'utente annulla. Nessun filtro MIME: `.ydk` non è un tipo registrato. */
+export async function pickTextFile(): Promise<PickedFile | null> {
+  const res = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
+  if (res.canceled) return null;
+  return readAsset(res.assets[0]);
+}
+
+/** Come `pickTextFile`, ma selezione multipla; [] se l'utente annulla. */
+export async function pickTextFiles(): Promise<PickedFile[]> {
+  const res = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, multiple: true });
+  if (res.canceled) return [];
+  return Promise.all(res.assets.map(readAsset));
 }
