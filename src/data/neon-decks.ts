@@ -3,7 +3,7 @@
 // RLS filtra alle sole righe dell'utente: nessun .eq('user_id', …) qui.
 import { client } from '@/data/auth';
 import type { Deck, DeckEntry, Format, Zone } from '@/domain/types';
-import { resolveCover, type DeckRepository } from './repository';
+import { countMain, resolveCover, type DeckRepository } from './repository';
 
 type DeckRow = { id: string; name: string; format: string; cover_card_id: number | null; is_public: boolean; created_at: string; updated_at: string };
 type EntryRow = { id: string; deck_id: string; card_id: number; zone: string; count: number };
@@ -43,7 +43,7 @@ export const neonDecks: DeckRepository = {
       const own = byDeck.get(deck.id) ?? [];
       return {
         ...deck,
-        cardCount: own.reduce((n, e) => n + e.count, 0),
+        cardCount: countMain(own.map((e) => ({ zone: e.zone as Zone, count: e.count }))),
         coverCardId: resolveCover(deck.coverCardId, own.map((e) => ({ cardId: e.card_id, zone: e.zone as Zone }))),
       };
     });

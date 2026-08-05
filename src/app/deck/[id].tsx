@@ -5,7 +5,7 @@
 // riga "Da assegnare" (zona scelta con le chip) prima di poter salvare.
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import {
   ActivityIndicator,
   Appbar,
@@ -29,16 +29,19 @@ import {
 import { CardCell } from '@/components/card-cell';
 import { CardRow } from '@/components/card-row';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing, dialogWidth } from '@/constants/theme';
+import { cappedWidth, contentContainer, DenseGridColumns, Spacing, dialogWidth } from '@/constants/theme';
 import { pickTextFile } from '@/data/pick-file';
 import { shareTextFile } from '@/data/share-file';
 import type { YgoCard } from '@/data/ygoprodeck';
-import { FORMATS, type DeckEntryInput, type Format, type Zone } from '@/domain/types';
+import { deckSections } from '@/domain/deck-sections';
+import { FORMATS, ZONES, type DeckEntryInput, type Format, type Zone } from '@/domain/types';
 import { buildYdk, parseYdk } from '@/domain/ydk';
 import { suggestedZone } from '@/domain/zone';
 import { useSession } from '@/data/auth';
 import { useCardDetail } from '@/hooks/use-card-detail';
 import { useCardSearch, useCardsByIds } from '@/hooks/use-cards';
+import { useGrid } from '@/hooks/use-layout';
+import { useSettings } from '@/hooks/use-settings';
 import {
   useDeck,
   useDeleteDeck,
@@ -49,13 +52,7 @@ import {
   useSetDeckPublic,
 } from '@/hooks/use-decks';
 
-const MIN_CELL_WIDTH = 105;
 const FORMAT_LIST = Object.keys(FORMATS) as Format[]; // data-driven: aggiungere un format basta in FORMATS
-const ZONES: { zone: Zone; label: string }[] = [
-  { zone: 'main', label: 'Main' },
-  { zone: 'extra', label: 'Extra' },
-  { zone: 'side', label: 'Side' },
-];
 const MAX_COPIES = 3; // regola copie YGO nello stepper (il DB resta permissivo 1..9)
 
 // Nome file da esportare: slug del nome deck, fallback se resta vuoto dopo lo strip.
@@ -66,6 +63,9 @@ export default function DeckDetailScreen() {
   const { colors } = useTheme();
   const openDetail = useCardDetail((s) => s.open);
   const { id } = useLocalSearchParams<{ id: string }>();
+  // preferenze di vista globali (Impostazioni → Deck), persistite
+  const groupRows = useSettings((s) => s.groupRows);
+  const sortByCopies = useSettings((s) => s.sortByCopies);
 
   // Sempre montato (con o senza sessione): loggato = proprietario (RLS → solo righe
   // proprie), quindi controlli di modifica. Anonimo = vista read-only del deck pubblico.
@@ -169,15 +169,11 @@ export default function DeckDetailScreen() {
     if (!ok) setExportUnavailable(true);
   };
 
-  const { width } = useWindowDimensions();
-  const available = Math.min(width, MaxContentWidth) - Spacing.three * 2;
-  const columns = Math.max(1, Math.floor((available + Spacing.two) / (MIN_CELL_WIDTH + Spacing.two)));
-  const cellWidth = Math.floor((available - Spacing.two * (columns - 1)) / columns);
+  const { cellWidth } = useGrid(DenseGridColumns);
 
-  const sections = ZONES.map(({ zone, label }) => ({
-    label,
-    entries: entries.filter((e) => e.zone === zone),
-  })).filter((s) => s.entries.length);
+  // Solo in vista: l'edit mode resta in ordine di inserimento, così le carte non
+  // saltano mentre premi +/− sullo stepper.
+  const sections = deckSections(entries, (cardId) => byId.get(cardId)?.frameType, { groupRows, sortByCopies });
 
   const draftSections = ZONES.map(({ zone, label }) => ({
     zone,
@@ -490,40 +486,46 @@ export default function DeckDetailScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
           {sections.map((sec) => (
-            <View key={sec.label}>
-              <List.Subheader>{`${sec.label} (${sec.entries.reduce((n, e) => n + e.count, 0)})`}</List.Subheader>
-              <View style={styles.grid}>
-                {sec.entries.flatMap((e) => {
-                  const card = byId.get(e.cardId);
-                  if (!card) return []; // id non risolto → non si disegna
-                  const isCover = coverCardId === e.cardId;
-                  return (
-                    <View key={`${sec.label}-${e.cardId}`} style={{ width: cellWidth }}>
-                      <CardCell
-                        name={card.name}
-                        imageUrl={card.card_images[0]?.image_url_cropped}
-                        frameType={card.frameType}
-                        subtitle={[]}
-                        count={e.count}
-                        badge={e.count >= 2 ? `×${e.count}` : undefined}
-                        onPress={() => openDetail(card)}
-                        topRight={
-                          isCover ? ( // scelta fatta: stella piena, allineata al badge, si azzera dal menu
-                            <Icon source="star" color={colors.primary} size={24} />
-                          ) : hasCover || !session ? undefined : ( // pick-mode: stella solo al proprietario, finché non sceglie
-                            <Pressable
-                              hitSlop={8}
-                              accessibilityLabel="Usa come copertina"
-                              onPress={() => setCover.mutate({ deckId: id, cardId: e.cardId })}>
-                              <Icon source="star-outline" color={colors.onSurfaceVariant} size={24} />
-                            </Pressable>
-                          )
-                        }
-                      />
-                    </View>
-                  );
-                })}
-              </View>
+            <View key={sec.label} style={styles.zone}>
+              <List.Subheader>
+                {`${sec.label} (${sec.groups.flat().reduce((n, e) => n + e.count, 0)})`}
+              </List.Subheader>
+              {/* un gruppo = una griglia: con «Gruppi a capo» sono Mostri/Magie/Trappole
+                  e la riga si chiude a fine gruppo, altrimenti è un gruppo solo */}
+              {sec.groups.map((group) => (
+                <View key={`${sec.label}-${group[0].cardId}`} style={styles.grid}>
+                  {group.flatMap((e) => {
+                    const card = byId.get(e.cardId);
+                    if (!card) return []; // id non risolto → non si disegna
+                    const isCover = coverCardId === e.cardId;
+                    return (
+                      <View key={`${e.zone}-${e.cardId}`} style={{ width: cellWidth }}>
+                        <CardCell
+                          name={card.name}
+                          imageUrl={card.card_images[0]?.image_url_cropped}
+                          frameType={card.frameType}
+                          subtitle={[]}
+                          count={e.count}
+                          badge={e.count >= 2 ? `×${e.count}` : undefined}
+                          onPress={() => openDetail(card)}
+                          topRight={
+                            isCover ? ( // scelta fatta: stella piena, allineata al badge, si azzera dal menu
+                              <Icon source="star" color={colors.primary} size={24} />
+                            ) : hasCover || !session ? undefined : ( // pick-mode: stella solo al proprietario, finché non sceglie
+                              <Pressable
+                                hitSlop={8}
+                                accessibilityLabel="Usa come copertina"
+                                onPress={() => setCover.mutate({ deckId: id, cardId: e.cardId })}>
+                                <Icon source="star-outline" color={colors.onSurfaceVariant} size={24} />
+                              </Pressable>
+                            )
+                          }
+                        />
+                      </View>
+                    );
+                  })}
+                </View>
+              ))}
             </View>
           ))}
         </ScrollView>
@@ -534,18 +536,16 @@ export default function DeckDetailScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  appbar: { backgroundColor: 'transparent', width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
+  appbar: { ...cappedWidth, backgroundColor: 'transparent' },
   saveBtn: { marginRight: Spacing.two },
   content: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.three,
+    ...contentContainer,
     paddingBottom: Spacing.six,
     gap: Spacing.three,
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  stepper: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  zone: { gap: Spacing.two }, // stessa distanza tra le righe di gruppi diversi e dentro la griglia
+  stepper:{ flexDirection: 'row', alignItems: 'center', flex: 1 },
   stepGroup: { flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'space-between' }, // − 2 + riempiono lo spazio; il cestino resta a destra a dimensione fissa
   stepBtn: { margin: 0 }, // azzera il margine 6 di Paper → i 3 controlli entrano nella cella stretta
   zoneChips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.one, justifyContent: 'flex-end', maxWidth: 200 },

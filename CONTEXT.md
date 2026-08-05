@@ -32,9 +32,10 @@ Ritual/Fusion/Synchro/Xyz/Link, incluse le varianti Pendulum), **Spell** e
 **Trap** sono gli altri due. È un attributo della `Card`, indipendente dalla
 `Zone`: una `Card` di tipo Monster può stare in Main o Extra secondo il suo
 sotto-tipo, mentre Spell/Trap stanno sempre in Main o Side (vedi `Extra Deck`).
-Usato per raggruppare visivamente le `Card` all'interno di una `Zone`
-(impostazione utente "raggruppa per tipologia" nel dettaglio `Deck`); non
-determina mai l'appartenenza a una `Zone`.
+È la suddivisione con cui le `Card` si presentano **dentro** una `Zone` (Mostri →
+Magie → Trappole, come in un file .ydk): un'impostazione utente le manda a capo e
+l'ordinamento per copie avviene sempre dentro il gruppo, mai tra tipi diversi.
+Non determina mai l'appartenenza a una `Zone`.
 _Avoid_: Categoria (già usato per l'archetipo/sottocategoria YGOPRODeck nel
 dettaglio carta), tipologia (termine italiano informale — il canonico è Card
 Type).
@@ -89,12 +90,49 @@ zone (`Main` / `Extra` / `Side`). Ogni voce è una coppia (`Card`, numero di
 copie) — un `Deck` referenzia `Card` astratte, non `Print`.
 _Avoid_: Decklist.
 
+**Tournament Deck**:
+Una decklist pubblica e di sola lettura, curata manualmente perché ha ottenuto
+un `Placement` in un singolo `Tournament`. Non è un `Deck` personale dell'admin:
+vive in un catalogo competitivo separato dai `Deck` degli `User`. Ha lo stesso
+`Format` del suo `Tournament`; eventi multi-format non fanno parte del dominio.
+Ha un nome, un `Placement`, un `Tournament` obbligatorio e opzionalmente il nome
+del player, una carta copertina e una fonte. È visibile al pubblico solo quando
+è `Published`; prima resta `Draft`.
+_Avoid_: Deck pubblico generico, deck dell'admin, Deck personale.
+
+**Draft / Published** (ciclo editoriale di un `Tournament Deck`):
+Un `Tournament Deck` in **Draft** è in preparazione e non appare nelle pagine
+pubbliche. Un `Tournament Deck` **Published** è parte del catalogo pubblico.
+_Avoid_: Privato/pubblico dell'utente, is_public.
+
+### Tornei
+
+**Tournament**:
+Un evento competitivo specifico in cui uno o più `Tournament Deck` hanno ottenuto
+un `Placement`. Ha un nome, un `Format`, una data e opzionalmente una location;
+ogni `Tournament Deck` appartiene a esattamente un `Tournament`.
+_Avoid_: Evento generico, formato, stagione.
+
+**Placement**:
+La fascia di risultato ottenuta da un `Tournament Deck` in un `Tournament`
+(es. Winner, Runner-up, Top 4, Top 8, Top 16). Non registra la posizione esatta
+quando non è significativa o non nota.
+_Avoid_: Rank, posizione esatta, classifica completa.
+
+**Source**:
+Il riferimento opzionale da cui arriva una specifica decklist di un
+`Tournament Deck`. Appartiene al singolo `Tournament Deck`, non necessariamente
+all'intero `Tournament`.
+_Avoid_: Fonte del torneo, citation obbligatoria.
+
 **Main Deck**:
 La zona principale del `Deck`: 40–60 `Card`.
 
 **Extra Deck**:
 Zona da 0–15 `Card`, riservata a tipi specifici (Fusion, Synchro, Xyz, Link).
-La zona di una `Card` è in parte **determinata dal suo tipo**, non libera.
+La zona di una `Card` è in parte **determinata dal suo tipo**, non libera. Qui la
+suddivisione di presentazione non è per `Card Type` (sono tutti mostri) ma per
+quei quattro sotto-tipi, nello stesso ordine.
 
 **Side Deck**:
 Zona da 0–15 `Card`, usata per scambi tra partite.

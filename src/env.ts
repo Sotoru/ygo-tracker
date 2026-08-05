@@ -16,6 +16,7 @@ export const env = createEnv({
       .transform((v) => v === 'true'),
     EXPO_PUBLIC_DEV_AUTOLOGIN_EMAIL: z.string().optional(),
     EXPO_PUBLIC_DEV_AUTOLOGIN_PASSWORD: z.string().optional(),
+    EXPO_PUBLIC_ADMIN_EMAILS: z.string().optional(),
   },
   // Expo inlina SOLO i `process.env.EXPO_PUBLIC_X` referenziati staticamente in
   // dot-notation: mappo ogni var a mano (il bulk `process.env` non verrebbe inlined).
@@ -25,6 +26,7 @@ export const env = createEnv({
     EXPO_PUBLIC_DEV_AUTOLOGIN: process.env.EXPO_PUBLIC_DEV_AUTOLOGIN,
     EXPO_PUBLIC_DEV_AUTOLOGIN_EMAIL: process.env.EXPO_PUBLIC_DEV_AUTOLOGIN_EMAIL,
     EXPO_PUBLIC_DEV_AUTOLOGIN_PASSWORD: process.env.EXPO_PUBLIC_DEV_AUTOLOGIN_PASSWORD,
+    EXPO_PUBLIC_ADMIN_EMAILS: process.env.EXPO_PUBLIC_ADMIN_EMAILS,
   },
   // Stringa vuota in .env → undefined → fallisce la validazione (fail-fast se non configurato).
   emptyStringAsUndefined: true,

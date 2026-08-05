@@ -3,12 +3,17 @@
 import type { Deck, DeckEntry, DeckEntryInput, Format, Snapshot, WishlistItem, Zone } from '@/domain/types';
 
 /**
- * Deck + conteggio carte, read-model per la lista (evita di caricare le entries per ogni deck).
+ * Deck + copie nel MAIN (Extra/Side esclusi: la card mostra il numero che conta per il
+ * formato, 40-60), read-model per la lista (evita di caricare le entries per ogni deck).
  * Qui `coverCardId` è la copertina RISOLTA (esplicita ?? prima carta), non la scelta grezza
  * della riga `Deck`: la lista mostra un'immagine e non ha mai bisogno del valore esplicito.
  * `null` solo se il deck è vuoto. Il dettaglio usa invece `Deck.coverCardId` (esplicito) per la stella.
  */
 export type DeckSummary = Deck & { cardCount: number };
+
+/** Copie nel Main di un deck (Extra/Side non contano per il 40-60). */
+export const countMain = (entries: { zone: Zone; count: number }[]): number =>
+  entries.reduce((n, e) => (e.zone === 'main' ? n + e.count : n), 0);
 
 /**
  * KV minimale cross-platform. AsyncStorage soddisfa questa firma direttamente
@@ -149,7 +154,7 @@ export function createRepository(
         const own = entries.filter((e) => e.deckId === d.id);
         return {
           ...d,
-          cardCount: own.reduce((n, e) => n + e.count, 0),
+          cardCount: countMain(own),
           coverCardId: resolveCover(d.coverCardId, own), // read-model: copertina risolta (vedi DeckSummary)
         };
       });

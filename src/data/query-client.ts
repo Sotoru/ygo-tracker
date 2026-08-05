@@ -23,8 +23,15 @@ export const persister = createAsyncStoragePersister({ storage: AsyncStorage });
 // La cache persistita è pensata per i DATI CARTA stabili (byId/byIds). Le ricerche
 // per nome sono effimere: NON persisterle, altrimenti un risultato vuoto resta
 // "fresco" per 24h e maschera il fallback di searchCardsByName (es. "blue eye").
+// Nella cache persistita finiscono anche i read-model dell'app (es. DeckSummary),
+// non solo i dati carta: cambiarne la forma senza bustare significa idratare vecchi
+// oggetti in componenti nuovi → crash al primo render, prima del refetch.
+// BUMPA QUESTA STRINGA a ogni cambio di forma di un read-model persistito.
+const BUSTER = '3'; // 2 = DeckSummary.cardCount → zoneCounts; 3 = e ritorno (cardCount = copie nel Main)
+
 export const persistOptions: PersistQueryClientProviderProps['persistOptions'] = {
   persister,
+  buster: BUSTER,
   dehydrateOptions: {
     shouldDehydrateQuery: (query) =>
       defaultShouldDehydrateQuery(query) &&

@@ -42,8 +42,8 @@ export default function SignInScreen() {
         <Button mode="contained" icon="google" onPress={onGoogle} disabled={busy} loading={busy}>
           Continua con Google
         </Button>
-        <Button mode="text" icon="earth" onPress={() => router.push('/public-decks')}>
-          Sfoglia i deck pubblici
+        <Button mode="text" icon="trophy" onPress={() => router.push('/public-decks')}>
+          Sfoglia i tornei
         </Button>
         {error ? (
           <Text variant="bodyMedium" style={[styles.text, { color: colors.error }]}>

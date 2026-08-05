@@ -7,7 +7,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { Appbar, Button, Chip, HelperText, Text, TextInput, useTheme } from 'react-native-paper';
 
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { cappedWidth, contentContainer, Spacing } from '@/constants/theme';
 import { pickTextFile, pickTextFiles } from '@/data/pick-file';
 import { FORMATS, type DeckEntryInput, type Format } from '@/domain/types';
 import { parseYdk } from '@/domain/ydk';
@@ -138,12 +138,9 @@ export default function NewDeckScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  appbar: { backgroundColor: 'transparent', width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
+  appbar: { ...cappedWidth, backgroundColor: 'transparent' },
   content: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.three,
+    ...contentContainer,
     paddingBottom: Spacing.six,
     gap: Spacing.three,
   },

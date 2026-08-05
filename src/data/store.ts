@@ -3,3 +3,4 @@
 // resta come base testabile e per un eventuale mode offline.
 export { neonWishlist as wishlist } from './neon-repository';
 export { neonDecks as decks } from './neon-decks';
+export { neonTournaments as tournaments } from './neon-tournaments';

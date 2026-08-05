@@ -5,12 +5,7 @@
 // riparte da "Dettagli" a ogni apertura, non si persiste.
 import { Image } from "expo-image";
 import { useState } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  useWindowDimensions,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import {
   Button,
   Dialog,
@@ -24,15 +19,17 @@ import { dialogWidth, Spacing } from "@/constants/theme";
 import { cardImageUrl } from "@/data/ygoprodeck";
 import { cardSpecs } from "@/domain/card-specs";
 import { useCardDetail } from "@/hooks/use-card-detail";
+import { useDialogScrollBounds } from "@/hooks/use-dialog-scroll-bounds";
 
 type Mode = "details" | "card";
 
 export function CardDetailDialog() {
   const { colors } = useTheme();
-  const { height } = useWindowDimensions();
   const card = useCardDetail((s) => s.detailCard);
   const close = useCardDetail((s) => s.close);
   const [mode, setMode] = useState<Mode>("details");
+  const { dialogStyle, scrollAreaMaxHeight, onTopLayout, onBottomLayout } =
+    useDialogScrollBounds();
 
   if (!card) return null;
 
@@ -44,22 +41,24 @@ export function CardDetailDialog() {
 
   return (
     <Portal>
-      <Dialog visible onDismiss={onClose} style={dialogWidth}>
-        <Dialog.Title numberOfLines={2}>{card.name}</Dialog.Title>
+      <Dialog visible onDismiss={onClose} style={[dialogWidth, dialogStyle]}>
+        <View onLayout={onTopLayout} style={styles.topChrome}>
+          <Dialog.Title numberOfLines={2}>{card.name}</Dialog.Title>
 
-        <View style={styles.toggle}>
-          <SegmentedButtons
-            value={mode}
-            onValueChange={(v) => setMode(v as Mode)}
-            buttons={[
-              { value: "details", label: "Dettagli", icon: "text-box" },
-              { value: "card", label: "Carta", icon: "image" },
-            ]}
-          />
+          <View style={styles.toggle}>
+            <SegmentedButtons
+              value={mode}
+              onValueChange={(v) => setMode(v as Mode)}
+              buttons={[
+                { value: "details", label: "Dettagli", icon: "text-box" },
+                { value: "card", label: "Carta", icon: "image" },
+              ]}
+            />
+          </View>
         </View>
 
         <Dialog.ScrollArea
-          style={[styles.scrollArea, { maxHeight: height * 0.8 }]}
+          style={[styles.scrollArea, { maxHeight: scrollAreaMaxHeight }]}
         >
           <ScrollView contentContainerStyle={styles.content}>
             {mode === "details" ? (
@@ -127,7 +126,7 @@ export function CardDetailDialog() {
           </ScrollView>
         </Dialog.ScrollArea>
 
-        <Dialog.Actions>
+        <Dialog.Actions onLayout={onBottomLayout}>
           <Button onPress={onClose}>Chiudi</Button>
         </Dialog.Actions>
       </Dialog>
@@ -136,6 +135,13 @@ export function CardDetailDialog() {
 }
 
 const styles = StyleSheet.create({
+  // marginTop:0 sovrascrive il marginTop:24 che Dialog di Paper inietta sul
+  // primo figlio; paddingTop lo sostituisce con pari spaziatura ma misurabile
+  // da onLayout (i margin non contano nell'altezza misurata).
+  topChrome: {
+    marginTop: 0,
+    paddingTop: Spacing.four,
+  },
   toggle: {
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.three,

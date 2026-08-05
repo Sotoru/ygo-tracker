@@ -4,12 +4,13 @@
 // 0..9 precompilato col count in wishlist; "Conferma" riconcilia (upsert >0,
 // rimuove =0). Dialog MD3 cross-platform (Portal).
 import { useState } from 'react';
-import { FlatList, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { Button, Dialog, IconButton, Portal, Text } from 'react-native-paper';
 
 import { dialogWidth, Spacing } from '@/constants/theme';
 import type { YgoCard } from '@/data/ygoprodeck';
 import type { WishlistItem } from '@/domain/types';
+import { useDialogScrollBounds } from '@/hooks/use-dialog-scroll-bounds';
 
 const MAX = 9;
 
@@ -34,10 +35,10 @@ export function PrintPicker({
   const [counts, setCounts] = useState<Record<string, number>>(() =>
     Object.fromEntries(rarities.map((r) => [r, savedCount(r)])),
   );
-  // cap al 60% dell'altezza schermo: lascia respiro per titolo+azioni e
-  // resta centrato (il Modal di Paper centra in verticale). Bounded → la
-  // FlatList scrolla e non collassa a 0 su web.
-  const { height } = useWindowDimensions();
+  // vedi docs/adr/0006: margine fisso + altezza ScrollArea misurata a
+  // runtime (niente flex, collassa a 0 su web dentro Dialog/Portal).
+  const { dialogStyle, scrollAreaMaxHeight, onTopLayout, onBottomLayout } =
+    useDialogScrollBounds();
 
   const bump = (rarity: string, delta: number) =>
     setCounts((c) => ({ ...c, [rarity]: Math.max(0, Math.min(MAX, (c[rarity] ?? 0) + delta)) }));
@@ -51,15 +52,17 @@ export function PrintPicker({
 
   return (
     <Portal>
-      <Dialog visible onDismiss={onClose} style={dialogWidth}>
-        <Dialog.Title numberOfLines={2}>{card.name}</Dialog.Title>
+      <Dialog visible onDismiss={onClose} style={[dialogWidth, dialogStyle]}>
+        <View onLayout={onTopLayout} style={styles.topChrome}>
+          <Dialog.Title numberOfLines={2}>{card.name}</Dialog.Title>
+        </View>
 
         {rarities.length === 0 ? (
           <Dialog.Content>
             <Text variant="bodyMedium">Nessuna stampa disponibile per questa carta.</Text>
           </Dialog.Content>
         ) : (
-          <Dialog.ScrollArea style={[styles.scrollArea, { maxHeight: height * 0.6 }]}>
+          <Dialog.ScrollArea style={[styles.scrollArea, { maxHeight: scrollAreaMaxHeight }]}>
             <FlatList
               data={rarities}
               keyExtractor={(r) => r}
@@ -94,7 +97,7 @@ export function PrintPicker({
           </Dialog.ScrollArea>
         )}
 
-        <Dialog.Actions>
+        <Dialog.Actions onLayout={onBottomLayout}>
           <Button onPress={onClose}>Annulla</Button>
           <Button mode="contained" disabled={rarities.length === 0} onPress={confirm}>
             Conferma
@@ -106,6 +109,11 @@ export function PrintPicker({
 }
 
 const styles = StyleSheet.create({
+  // vedi commento gemello in card-detail-dialog.tsx
+  topChrome: {
+    marginTop: 0,
+    paddingTop: Spacing.four,
+  },
   scrollArea: {
     paddingHorizontal: Spacing.four,
   },

@@ -7,6 +7,19 @@ export type Format = 'goat' | 'edison' | 'hat' | 'tengu' | 'redu';
 /** Le tre zone di un Deck. La zona di una Card è in parte determinata dal suo tipo. */
 export type Zone = 'main' | 'extra' | 'side';
 
+/** Card Type: la categoria di gioco di una Card, derivata dal frameType (vedi CONTEXT.md). */
+export type CardType = 'monster' | 'spell' | 'trap';
+
+/** I Card Type nell'ordine in cui si presentano dentro una Zone (come in un file .ydk). */
+export const CARD_TYPES: CardType[] = ['monster', 'spell', 'trap'];
+
+/** Le zone in ordine di presentazione, con l'etichetta UI: un solo elenco per tutte le schermate. */
+export const ZONES: { zone: Zone; label: string }[] = [
+  { zone: 'main', label: 'Main' },
+  { zone: 'extra', label: 'Extra' },
+  { zone: 'side', label: 'Side' },
+];
+
 /** Stato di una Card nella Banlist di un Format. */
 export type BanStatus = 'forbidden' | 'limited' | 'semiLimited' | 'unlimited';
 
@@ -66,6 +79,51 @@ export interface DeckEntry {
 
 /** Voce da importare (es. da un .ydk): senza id/deckId, li assegna il repository. */
 export interface DeckEntryInput {
+  cardId: number;
+  zone: Zone;
+  count: number;
+}
+
+export type Placement = 'winner' | 'runnerUp' | 'top4' | 'top8' | 'top16' | 'top32' | 'top64';
+export type TournamentDeckStatus = 'draft' | 'published';
+
+export const PLACEMENTS: Record<Placement, { label: string; rank: number }> = {
+  winner: { label: 'Winner', rank: 0 },
+  runnerUp: { label: 'Runner-up', rank: 1 },
+  top4: { label: 'Top 4', rank: 2 },
+  top8: { label: 'Top 8', rank: 3 },
+  top16: { label: 'Top 16', rank: 4 },
+  top32: { label: 'Top 32', rank: 5 },
+  top64: { label: 'Top 64', rank: 6 },
+};
+
+export interface Tournament {
+  id: string;
+  name: string;
+  format: Format;
+  date: string;
+  location: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TournamentDeck {
+  id: string;
+  tournamentId: string;
+  name: string;
+  playerName: string | null;
+  placement: Placement;
+  format: Format;
+  coverCardId: number | null;
+  sourceUrl: string | null;
+  status: TournamentDeckStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TournamentDeckEntry {
+  id: string;
+  tournamentDeckId: string;
   cardId: number;
   zone: Zone;
   count: number;

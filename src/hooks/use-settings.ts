@@ -27,11 +27,17 @@ type Settings = {
   setBanlistShowTitles: (show: boolean) => void;
   rarityShort: boolean;
   setRarityShort: (short: boolean) => void;
+  groupRows: boolean;
+  setGroupRows: (on: boolean) => void;
+  sortByCopies: boolean;
+  setSortByCopies: (on: boolean) => void;
 };
 
 // Web: localStorage (sincrono → idrata prima del paint, niente flash), guardato
 // per lo static render dove window non esiste. Native: AsyncStorage (async).
-const storage = createJSONStorage<Pick<Settings, 'cardView' | 'banlistColumns' | 'banlistShowTitles' | 'rarityShort'>>(
+const storage = createJSONStorage<
+  Pick<Settings, 'cardView' | 'banlistColumns' | 'banlistShowTitles' | 'rarityShort' | 'groupRows' | 'sortByCopies'>
+>(
   () =>
   Platform.OS === 'web'
     ? typeof window !== 'undefined'
@@ -51,6 +57,10 @@ export const useSettings = create<Settings>()(
       setBanlistShowTitles: (banlistShowTitles) => set({ banlistShowTitles }),
       rarityShort: false,
       setRarityShort: (rarityShort) => set({ rarityShort }),
+      groupRows: false, // default = griglia continua dentro la zona, il look storico
+      setGroupRows: (groupRows) => set({ groupRows }),
+      sortByCopies: false,
+      setSortByCopies: (sortByCopies) => set({ sortByCopies }),
     }),
     {
       name: 'settings',
@@ -61,6 +71,8 @@ export const useSettings = create<Settings>()(
         banlistColumns: s.banlistColumns,
         banlistShowTitles: s.banlistShowTitles,
         rarityShort: s.rarityShort,
+        groupRows: s.groupRows,
+        sortByCopies: s.sortByCopies,
       }),
     }
   )

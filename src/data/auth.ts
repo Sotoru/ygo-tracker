@@ -47,3 +47,15 @@ export const DEV_AUTOLOGIN =
 export function signInDev() {
   return client.auth.signIn.email(DEV_AUTOLOGIN!);
 }
+
+const ADMIN_EMAILS = new Set(
+  (env.EXPO_PUBLIC_ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean),
+);
+
+export function isAdminSession(session: { user?: { email?: string | null } } | null | undefined) {
+  const email = session?.user?.email?.toLowerCase();
+  return !!email && ADMIN_EMAILS.has(email);
+}

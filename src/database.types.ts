@@ -77,6 +77,118 @@ export type Database = {
           }
         ]
       }
+      tournaments: {
+        Row: {
+          created_at: string
+          date: string
+          format: string
+          id: string
+          location: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          format: string
+          id?: string
+          location?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          format?: string
+          id?: string
+          location?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tournament_decks: {
+        Row: {
+          cover_card_id: number | null
+          created_at: string
+          format: string
+          id: string
+          name: string
+          placement: string
+          player_name: string | null
+          source_url: string | null
+          status: string
+          tournament_id: string
+          updated_at: string
+        }
+        Insert: {
+          cover_card_id?: number | null
+          created_at?: string
+          format: string
+          id?: string
+          name: string
+          placement: string
+          player_name?: string | null
+          source_url?: string | null
+          status?: string
+          tournament_id: string
+          updated_at?: string
+        }
+        Update: {
+          cover_card_id?: number | null
+          created_at?: string
+          format?: string
+          id?: string
+          name?: string
+          placement?: string
+          player_name?: string | null
+          source_url?: string | null
+          status?: string
+          tournament_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_decks_tournament_id_fkey"
+            columns: ["tournament_id"]
+            isOneToOne: false
+            referencedRelation: "tournaments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tournament_deck_entries: {
+        Row: {
+          card_id: number
+          count: number
+          id: string
+          tournament_deck_id: string
+          zone: string
+        }
+        Insert: {
+          card_id: number
+          count: number
+          id?: string
+          tournament_deck_id: string
+          zone: string
+        }
+        Update: {
+          card_id?: number
+          count?: number
+          id?: string
+          tournament_deck_id?: string
+          zone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tournament_deck_entries_tournament_deck_id_fkey"
+            columns: ["tournament_deck_id"]
+            isOneToOne: false
+            referencedRelation: "tournament_decks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       wishlist_items: {
         Row: {
           added_at: string

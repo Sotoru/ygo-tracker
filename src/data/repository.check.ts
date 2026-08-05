@@ -116,9 +116,9 @@ async function main() {
   ]);
   assert.equal((await repo.getDeck(imported.id))!.entries.length, 2, 'createDeck deve inserire le entries');
 
-  // getDecks porta il conteggio carte (somma dei count) senza caricare le entries
+  // getDecks porta le copie del Main (Extra/Side esclusi: non contano per il 40-60)
   const summaries = await repo.getDecks();
-  assert.equal(summaries.find((d) => d.id === imported.id)!.cardCount, 4, 'cardCount = somma dei count');
+  assert.equal(summaries.find((d) => d.id === imported.id)!.cardCount, 3, 'cardCount = copie nel Main');
 
   // copertina: senza scelta esplicita, fallback = Main con card_id minimo (poi extra, poi side)
   const cover = await repo.createDeck('Cover', 'goat', [

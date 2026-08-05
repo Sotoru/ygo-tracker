@@ -28,8 +28,13 @@ export const TINT_ALPHA = '33';
  * frame è sconosiuto/assente → il chiamante ripiega sul neutro del tema.
  */
 export function frameTint(frameType?: string): string | undefined {
-  if (!frameType) return undefined;
-  const base = frameType.replace(/_pendulum$/, ''); // pendulum → colore del mostro base
-  const hue = FRAME_HUE[base];
+  const hue = frameHue(frameType);
   return hue ? hue + TINT_ALPHA : undefined;
+}
+
+/** Hue opaca del frame, senza alpha: stessa tinta dello sfondo cella ma piena
+ * (→ più scura), per gli elementi che devono staccare sopra di essa. */
+export function frameHue(frameType?: string): string | undefined {
+  if (!frameType) return undefined;
+  return FRAME_HUE[frameType.replace(/_pendulum$/, '')]; // pendulum → mostro base
 }

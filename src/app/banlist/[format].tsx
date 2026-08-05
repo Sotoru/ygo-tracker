@@ -5,21 +5,18 @@
 // griglia/lista. Rotta sopra le tab (Stack root) → header/back propri.
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Appbar, List, Menu, Text, useTheme } from 'react-native-paper';
 
 import { CardCell } from '@/components/card-cell';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { cappedWidth, contentContainer, Spacing } from '@/constants/theme';
 import { BANLISTS } from '@/domain/banlists';
 import { FORMATS, type BanStatus, type Format } from '@/domain/types';
 import { useCardDetail } from '@/hooks/use-card-detail';
 import { useBanlistCards } from '@/hooks/use-cards';
+import { useGrid } from '@/hooks/use-layout';
 import { BANLIST_COLUMN_OPTIONS, useSettings } from '@/hooks/use-settings';
-
-// Sotto questa larghezza le celle diventano illeggibili: la scelta utente viene
-// ridotta a quante colonne ci stanno davvero.
-const MIN_CELL_WIDTH = 105;
 
 // Ordine di visualizzazione scelto: dal meno al più restrittivo.
 const SECTIONS: { status: Exclude<BanStatus, 'unlimited'>; label: string }[] = [
@@ -39,17 +36,12 @@ export default function BanlistScreen() {
 
   // griglia densa (browse/reference): colonne scelte dall'utente (picker in
   // appbar, persistito), ridotte a quante ci stanno per non scendere sotto
-  // MIN_CELL_WIDTH → sempre usabile anche su phone.
+  // MinCellWidth → sempre usabile anche su phone.
   const { banlistColumns: desiredColumns, setBanlistColumns, banlistShowTitles, setBanlistShowTitles } =
     useSettings();
   const [colMenuOpen, setColMenuOpen] = useState(false);
-  const { width } = useWindowDimensions();
-  // padding sottratto DOPO il cap: dentro il content box (maxWidth − padding),
-  // non sulla finestra, altrimenti su desktop il cap vince e le celle wrappano
-  const available = Math.min(width, MaxContentWidth) - Spacing.three * 2;
-  const fits = Math.max(1, Math.floor((available + Spacing.two) / (MIN_CELL_WIDTH + Spacing.two)));
-  const columns = Math.min(desiredColumns, fits);
-  const cellWidth = Math.floor((available - Spacing.two * (columns - 1)) / columns);
+  // useGrid clampa la scelta utente a quante colonne ci stanno davvero
+  const { cellWidth } = useGrid(desiredColumns);
 
   // carte per nome → sezioni nell'ordine del file (le non risolte, 0 oggi, cadono)
   const sections = useMemo(() => {
@@ -140,12 +132,9 @@ export default function BanlistScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  appbar: { backgroundColor: 'transparent', width: '100%', maxWidth: MaxContentWidth, alignSelf: 'center' },
+  appbar: { ...cappedWidth, backgroundColor: 'transparent' },
   content: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
-    paddingHorizontal: Spacing.three,
+    ...contentContainer,
     paddingBottom: Spacing.six,
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },

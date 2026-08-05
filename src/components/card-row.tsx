@@ -4,11 +4,12 @@
 // riga per i risultati di ricerca e per la wishlist salvata: cambia solo il
 // bottone trailing (aggiungi vs rimuovi).
 import { Image } from "expo-image";
-import { Pressable, StyleSheet, useWindowDimensions, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Icon, List, Text, useTheme } from "react-native-paper";
 
 import { Spacing } from "@/constants/theme";
 import { cardImageUrl } from "@/data/ygoprodeck";
+import { useBreakpoint } from "@/hooks/use-layout";
 
 // spezza le righe in colonne da `size`: [a,b,c,d,e] → [[a,b,c,d],[e]]
 const chunk = <T,>(arr: T[], size: number): T[][] => {
@@ -48,8 +49,8 @@ export function CardRow({
     subtitle ??
     (rarity ? [`${rarity}${count ? ` ${count}x` : ""}`] : ["Nessuna stampa"]);
   // Su schermo stretto le colonne da 4 troncano le rarità ("Ultra Rare ×2" → "Ultra…"):
-  // sotto i 600px le impilo tutte in un'unica colonna a piena larghezza.
-  const narrow = useWindowDimensions().width < 600;
+  // su phone le impilo tutte in un'unica colonna a piena larghezza.
+  const narrow = useBreakpoint() === "phone";
   const cols = narrow ? [lines] : chunk(lines, 4);
 
   return (

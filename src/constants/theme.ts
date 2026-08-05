@@ -18,27 +18,12 @@ export const ColorRole = {
 
 export type ThemeColor = keyof typeof ColorRole;
 
-export const Spacing = {
-  half: 2,
-  one: 4,
-  two: 8,
-  three: 16,
-  four: 24,
-  five: 32,
-  six: 64,
-} as const;
+// Larghezze e spaziature vivono in ./layout (puro, testabile). Ri-esportate qui
+// perché @/constants/theme è l'import storico dei call site. Gli altri nomi di
+// ./layout (Breakpoint, MinCellWidth, MaxContentWidth) si importano da là.
+export { cappedWidth, contentContainer, DenseGridColumns, dialogWidth, Spacing } from './layout';
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 960; // knob unico: cambia qui per allargare/stringere il container globale
-
-// Tutti i dialog/modali: mai più larghi del content, centrati, con un gutter su
-// schermi stretti. La % (non width:'100%') lascia il gutter anche su mobile,
-// dove marginHorizontal:'auto' da solo lo azzererebbe. Cross-platform, no Platform.OS.
-export const dialogWidth = {
-  width: '90%',
-  maxWidth: MaxContentWidth,
-  marginHorizontal: 'auto',
-} as const;
 
 // Font MD3: su web usa lo stack Spline Sans (CSS var); su native resta il font
 // di sistema di MD3 (nessun font custom caricato).
