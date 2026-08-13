@@ -3,13 +3,12 @@
 // divisa in "Da prendere" (Wanted) e "Prese" (Obtained). Da un risultato o dalla
 // matita di una carta si apre il PrintPicker per scegliere rarità + copie.
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  FlatList,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
+import { Platform, ScrollView, StyleSheet, View } from "react-native";
+import Animated, {
+  FadeIn,
+  LayoutAnimationConfig,
+  LinearTransition,
+} from "react-native-reanimated";
 import {
   ActivityIndicator,
   Button,
@@ -494,29 +493,46 @@ export default function WishlistScreen() {
       {view === "grid" ? (
         // Griglia: ScrollView (niente virtualizzazione) con, per sezione, header a
         // piena larghezza + celle in flexWrap → colonne responsive senza calcoli.
-        <ScrollView
-          contentContainerStyle={styles.listContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          {rows.length === 0
-            ? emptyContent
-            : toSections(rows).map((s) => (
-                <View key={s.key}>
-                  {s.title ? <List.Subheader>{s.title}</List.Subheader> : null}
-                  <View style={styles.grid}>
-                    {s.items.map((r) => (
-                      <View key={r.key} style={{ width: gridCellWidth }}>
-                        {renderCardRow(
-                          r as Extract<Row, { kind: "search" | "card" }>,
-                        )}
-                      </View>
-                    ))}
+        // Wanted↔Obtained non si vedeva: la riga spariva da una sezione e riappariva
+        // nell'altra. Qui le sezioni sono parent distinti, React non conserva
+        // l'identità della cella → il move è impossibile senza appiattire la griglia,
+        // resta il fade all'arrivo. skipEntering evita la cascata al mount (la cache
+        // React Query è persistita: senza gate rifarebbe il fade a ogni cambio tab).
+        // ponytail: in lista il move è vero (itemLayoutAnimation sotto) — asimmetria
+        // voluta, nessuno confronta le due viste affiancate. Niente exiting: in
+        // flexWrap terrebbe il buco per tutta la durata del fade, poi scatto secco.
+        <LayoutAnimationConfig skipEntering>
+          <ScrollView
+            contentContainerStyle={styles.listContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            {rows.length === 0
+              ? emptyContent
+              : toSections(rows).map((s) => (
+                  <View key={s.key}>
+                    {s.title ? (
+                      <List.Subheader>{s.title}</List.Subheader>
+                    ) : null}
+                    <View style={styles.grid}>
+                      {s.items.map((r) => (
+                        <Animated.View
+                          key={r.key}
+                          style={{ width: gridCellWidth }}
+                          entering={r.kind === "card" ? FadeIn : undefined}
+                        >
+                          {renderCardRow(
+                            r as Extract<Row, { kind: "search" | "card" }>,
+                          )}
+                        </Animated.View>
+                      ))}
+                    </View>
                   </View>
-                </View>
-              ))}
-        </ScrollView>
+                ))}
+          </ScrollView>
+        </LayoutAnimationConfig>
       ) : (
-        <FlatList
+        <Animated.FlatList
+          itemLayoutAnimation={LinearTransition}
           data={rows}
           keyExtractor={(r) => r.key}
           renderItem={({ item: r }) =>
