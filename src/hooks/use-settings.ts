@@ -31,12 +31,23 @@ type Settings = {
   setGroupRows: (on: boolean) => void;
   sortByCopies: boolean;
   setSortByCopies: (on: boolean) => void;
+  groupByFormat: boolean;
+  setGroupByFormat: (on: boolean) => void;
 };
 
 // Web: localStorage (sincrono → idrata prima del paint, niente flash), guardato
 // per lo static render dove window non esiste. Native: AsyncStorage (async).
 const storage = createJSONStorage<
-  Pick<Settings, 'cardView' | 'banlistColumns' | 'banlistShowTitles' | 'rarityShort' | 'groupRows' | 'sortByCopies'>
+  Pick<
+    Settings,
+    | 'cardView'
+    | 'banlistColumns'
+    | 'banlistShowTitles'
+    | 'rarityShort'
+    | 'groupRows'
+    | 'sortByCopies'
+    | 'groupByFormat'
+  >
 >(
   () =>
   Platform.OS === 'web'
@@ -61,6 +72,8 @@ export const useSettings = create<Settings>()(
       setGroupRows: (groupRows) => set({ groupRows }),
       sortByCopies: false,
       setSortByCopies: (sortByCopies) => set({ sortByCopies }),
+      groupByFormat: false, // default = lista piatta per updated_at, il look storico
+      setGroupByFormat: (groupByFormat) => set({ groupByFormat }),
     }),
     {
       name: 'settings',
@@ -73,6 +86,7 @@ export const useSettings = create<Settings>()(
         rarityShort: s.rarityShort,
         groupRows: s.groupRows,
         sortByCopies: s.sortByCopies,
+        groupByFormat: s.groupByFormat,
       }),
     }
   )

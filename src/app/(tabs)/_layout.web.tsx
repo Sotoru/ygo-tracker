@@ -30,6 +30,8 @@ export default function AppTabs() {
     setGroupRows,
     sortByCopies,
     setSortByCopies,
+    groupByFormat,
+    setGroupByFormat,
   } = useSettings();
   const [viewMenuOpen, setViewMenuOpen] = useState(false);
   const viewLabel =
@@ -113,6 +115,17 @@ export default function AppTabs() {
             />
 
             <List.Subheader>Deck</List.Subheader>
+            {/* Lista deck: una sezione per banlist (titolo = nome della banlist), e il
+                nome esce dal sottotitolo delle card, dove sarebbe ripetuto. */}
+            <List.Item
+              title="Dividi per banlist"
+              description="Una sezione per banlist invece della lista piatta"
+              left={(props) => <List.Icon {...props} icon="format-list-group" />}
+              right={() => (
+                <Switch value={groupByFormat} onValueChange={setGroupByFormat} />
+              )}
+              onPress={() => setGroupByFormat(!groupByFormat)}
+            />
             {/* Nel dettaglio deck, dentro ogni zona: ogni gruppo su righe sue (la griglia
                 si chiude a fine gruppo). Spenta = griglia continua, l'ordine dei gruppi
                 resta comunque. */}
