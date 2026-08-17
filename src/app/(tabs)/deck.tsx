@@ -98,12 +98,9 @@ export default function DeckScreen() {
         )}
       </ScreenState>
 
-      <FAB
-        icon="plus"
-        accessibilityLabel="Nuovo deck"
-        style={[styles.fab, { bottom: Spacing.four + BottomTabInset }]}
-        onPress={() => router.push('/deck/new')}
-      />
+      <View style={[styles.fabLane, { bottom: Spacing.four + BottomTabInset }]}>
+        <FAB icon="plus" accessibilityLabel="Nuovo deck" onPress={() => router.push('/deck/new')} />
+      </View>
     </ThemedView>
   );
 }
@@ -113,6 +110,8 @@ const styles = StyleSheet.create({
   content: { ...contentContainer, paddingBottom: Spacing.six },
   actions: { ...contentContainer, alignItems: 'flex-start', flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginBottom: Spacing.three },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  // FAB standard MD3 ancorato al bordo dello schermo (allineamento identico web/native).
-  fab: { position: 'absolute', right: Spacing.three },
+  // Il FAB segue il bordo destro del container (non quello dello schermo): stessa
+  // geometria del contenuto, così sopra i 960 non se ne stacca. La corsia è
+  // box-none, altrimenti coprirebbe la griglia sotto.
+  fabLane: { position: 'absolute', ...contentContainer, alignItems: 'flex-end', pointerEvents: 'box-none' },
 });

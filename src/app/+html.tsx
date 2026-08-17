@@ -30,10 +30,6 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="theme-color" content="#FFFBFE" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#1C1B1F" media="(prefers-color-scheme: dark)" />
 
-        {/* Titolo statico app-wide: nessuna schermata usa più expo-router/head, quindi
-            questo vale ovunque e resta invariato alla navigazione client. */}
-        <title>YGO Tracker</title>
-
         {preconnectOrigins.map((origin) => (
           <link key={origin} rel="preconnect" href={origin} crossOrigin="use-credentials" />
         ))}

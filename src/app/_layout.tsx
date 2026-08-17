@@ -7,6 +7,7 @@ import {
   ThemeProvider,
   usePathname,
 } from "expo-router";
+import Head from "expo-router/head";
 import { useEffect, useRef } from "react";
 import { StyleSheet, useColorScheme } from "react-native";
 import { ActivityIndicator, PaperProvider } from "react-native-paper";
@@ -127,6 +128,9 @@ export default function RootLayout() {
     >
       <PaperProvider theme={paper} settings={paperSettings}>
         <ThemeProvider value={nav}>
+          <Head>
+            <title>YGO Tracker</title>
+          </Head>
           <RootNavigator />
           {/* Montato una volta: qualsiasi schermata apre il dettaglio via useCardDetail */}
           <CardDetailDialog />
