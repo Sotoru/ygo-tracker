@@ -9,13 +9,27 @@ import type { DeckEntryInput, Zone } from '@/domain/types';
 const SECTIONS: Record<string, Zone> = { '#main': 'main', '#extra': 'extra', '!side': 'side' };
 
 /**
- * Passcode ripetuti = copie: li aggrego in `count`. Righe fuori da ogni sezione,
- * vuote o non numeriche cadono. L'ordine delle voci restituite segue la prima
- * apparizione nel file.
+ * Passcode ripetuti = copie: li aggrego in `count`. Condiviso con `ydke.ts`, così
+ * i due formati hanno le stesse regole su copie e ordine (prima apparizione).
+ */
+export function collectEntries(passcodes: Iterable<[cardId: number, zone: Zone]>): DeckEntryInput[] {
+  const acc = new Map<string, DeckEntryInput>(); // chiave: `${zone}:${cardId}`
+  for (const [cardId, zone] of passcodes) {
+    const key = `${zone}:${cardId}`;
+    const existing = acc.get(key);
+    if (existing) existing.count += 1;
+    else acc.set(key, { cardId, zone, count: 1 });
+  }
+  return [...acc.values()];
+}
+
+/**
+ * Righe fuori da ogni sezione, vuote o non numeriche cadono. L'ordine delle voci
+ * restituite segue la prima apparizione nel file.
  */
 export function parseYdk(text: string): DeckEntryInput[] {
   let zone: Zone | null = null;
-  const acc = new Map<string, DeckEntryInput>(); // chiave: `${zone}:${cardId}`
+  const passcodes: [number, Zone][] = [];
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.trim();
     if (!line) continue;
@@ -26,13 +40,9 @@ export function parseYdk(text: string): DeckEntryInput[] {
     }
     if (line.startsWith('#') || line.startsWith('!')) continue; // altri commenti/sezioni note
     if (!zone || !/^\d+$/.test(line)) continue;
-    const cardId = Number(line);
-    const key = `${zone}:${cardId}`;
-    const existing = acc.get(key);
-    if (existing) existing.count += 1;
-    else acc.set(key, { cardId, zone, count: 1 });
+    passcodes.push([Number(line), zone]);
   }
-  return [...acc.values()];
+  return collectEntries(passcodes);
 }
 
 const ZONE_ORDER: Zone[] = ['main', 'extra', 'side'];
