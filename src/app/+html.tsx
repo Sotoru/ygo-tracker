@@ -42,7 +42,13 @@ export default function Root({ children }: PropsWithChildren) {
         {/* ScrollViewStyleReset non azzera il margin di default di <body> (8px):
             senza questo si vede una striscia bianca fissa in alto e in basso,
             tagliata da body{overflow:hidden} invece di essere scrollabile. */}
-        <style dangerouslySetInnerHTML={{ __html: `body{margin:0}` }} />
+        {/* height:100dvh sovrascrive il 100% del reset: 100% si misura sulla large
+            viewport (barra URL collassata), quindi sui browser mobile il fondo
+            dell'app finisce sotto la chrome e — con body{overflow:hidden} — non è
+            raggiungibile (FAB e ultime righe tagliate). dvh segue la chrome. */}
+        <style
+          dangerouslySetInnerHTML={{ __html: `body{margin:0}html,body,#root{height:100dvh}` }}
+        />
       </head>
       <body>{children}</body>
     </html>
