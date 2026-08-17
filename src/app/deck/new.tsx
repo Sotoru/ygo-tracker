@@ -4,14 +4,16 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Appbar, Button, Chip, HelperText, Text, TextInput, useTheme } from 'react-native-paper';
+import { Button, HelperText, Text, TextInput, useTheme } from 'react-native-paper';
 
-import { ThemedView } from '@/components/themed-view';
-import { cappedWidth, contentContainer, Spacing } from '@/constants/theme';
+import { FormatChips } from '@/components/shared/format-chips';
+import { ScreenHeader } from '@/components/shared/screen-header';
+import { ThemedView } from '@/components/shared/themed-view';
+import { contentContainer, Spacing } from '@/constants/theme';
 import { pickTextFile, pickTextFiles } from '@/data/pick-file';
-import { FORMATS, type DeckEntryInput, type Format } from '@/domain/types';
+import { type DeckEntryInput, type Format } from '@/domain/types';
 import { parseYdk } from '@/domain/ydk';
-import { useCreateDeck } from '@/hooks/use-decks';
+import { useCreateDeck } from '@/hooks/deck/use-decks';
 
 export default function NewDeckScreen() {
   const router = useRouter();
@@ -72,10 +74,7 @@ export default function NewDeckScreen() {
 
   return (
     <ThemedView style={styles.screen}>
-      <Appbar.Header style={styles.appbar}>
-        <Appbar.BackAction onPress={() => (router.canGoBack() ? router.back() : router.replace('/deck'))} />
-        <Appbar.Content title="Nuovo deck" />
-      </Appbar.Header>
+      <ScreenHeader title="Nuovo deck" fallback="/deck" />
 
       <ScrollView contentContainerStyle={styles.content}>
         <TextInput label="Nome" value={name} onChangeText={setName} mode="outlined" />
@@ -83,13 +82,7 @@ export default function NewDeckScreen() {
         <Text variant="labelLarge" style={styles.sectionLabel}>
           Formato
         </Text>
-        <View style={styles.chips}>
-          {(Object.keys(FORMATS) as Format[]).map((f) => (
-            <Chip key={f} selected={f === format} showSelectedOverlay onPress={() => setFormat(f)}>
-              {FORMATS[f].label}
-            </Chip>
-          ))}
-        </View>
+        <FormatChips value={format} onChange={(f) => f && setFormat(f)} />
 
         <Text variant="labelLarge" style={styles.sectionLabel}>
           Import
@@ -138,7 +131,6 @@ export default function NewDeckScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  appbar: { ...cappedWidth, backgroundColor: 'transparent' },
   content: {
     ...contentContainer,
     paddingBottom: Spacing.six,

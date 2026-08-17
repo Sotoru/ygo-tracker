@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  // I .check.ts girano con `npm run check` (tsx, non import); gli script sono manutenzione one-shot.
+  "dynamicallyLoaded": ["src/**/*.check.ts", "scripts/*.mjs"],
+  // Un export usato solo nel suo file non è morto: è un knob nominato (MinCellWidth, TINT_ALPHA…).
+  "ignoreExportsUsedInFile": true,
+  // Usate da configurazione/piattaforma, non da import: plugin in app.json (expo-splash-screen),
+  // userInterfaceStyle su Android (expo-system-ui), peer di expo-router/expo (gesture-handler, web).
+  "ignoreDependencies": [
+    "expo-splash-screen",
+    "expo-system-ui",
+    "react-native-gesture-handler",
+    "react-native-web"
+  ]
+}

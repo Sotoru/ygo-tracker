@@ -12,6 +12,7 @@ import {
   type TournamentDeckStatus,
   type Zone,
 } from '@/domain/types';
+import { firstRow, row, rows, run } from './neon-query';
 import { resolveCover } from './repository';
 
 export type TournamentSummary = Tournament & { publishedDeckCount: number };
@@ -144,177 +145,165 @@ function withDeckCounts(decks: TournamentDeck[], entries: Pick<TournamentDeckEnt
     .sort((a, b) => PLACEMENTS[a.placement].rank - PLACEMENTS[b.placement].rank || a.name.localeCompare(b.name));
 }
 
+const now = () => new Date().toISOString();
+
+const entryRowsFor = (tournamentDeckId: string, entries: DeckEntryInput[]) =>
+  entries.map((e) => ({ tournament_deck_id: tournamentDeckId, card_id: e.cardId, zone: e.zone, count: e.count }));
+
+// Torneo + i suoi deck con conteggio carte. La vista pubblica e quella admin
+// differiscono solo per il filtro `status`: una funzione, un flag.
+async function tournamentWithDecks(id: string, publishedOnly: boolean) {
+  const tournamentRow = await firstRow<TournamentRow>(client.from('tournaments').select().eq('id', id));
+  if (!tournamentRow) return null;
+  let deckQuery = client.from('tournament_decks').select().eq('tournament_id', id);
+  if (publishedOnly) deckQuery = deckQuery.eq('status', 'published');
+  const deckRows = await rows<TournamentDeckRow>(deckQuery);
+  const deckIds = deckRows.map((d) => d.id);
+  const entryRows = deckIds.length
+    ? await rows<TournamentDeckEntryRow>(
+        client
+          .from('tournament_deck_entries')
+          .select('tournament_deck_id, card_id, zone, count')
+          .in('tournament_deck_id', deckIds),
+      )
+    : [];
+  return {
+    tournament: toTournament(tournamentRow),
+    decks: withDeckCounts(deckRows.map(toTournamentDeck), entryRows.map(toTournamentDeckEntry)),
+  };
+}
+
 export const neonTournaments: TournamentRepository = {
   async getTournaments(format) {
     let q = client.from('tournaments').select().order('date', { ascending: false });
     if (format) q = q.eq('format', format);
-    const { data: tournaments, error } = await q;
-    if (error) throw error;
-    const ids = ((tournaments ?? []) as TournamentRow[]).map((t) => t.id);
+    const tournamentRows = await rows<TournamentRow>(q);
+    const ids = tournamentRows.map((t) => t.id);
     if (!ids.length) return [];
-    const { data: decks, error: e2 } = await client
-      .from('tournament_decks')
-      .select('id, tournament_id, name, player_name, placement, format, cover_card_id, source_url, status, created_at, updated_at')
-      .in('tournament_id', ids)
-      .eq('status', 'published');
-    if (e2) throw e2;
-    return withCounts(((tournaments ?? []) as TournamentRow[]).map(toTournament), ((decks ?? []) as TournamentDeckRow[]).map(toTournamentDeck))
-      .filter((t) => t.publishedDeckCount > 0);
+    const deckRows = await rows<TournamentDeckRow>(
+      client
+        .from('tournament_decks')
+        .select('id, tournament_id, name, player_name, placement, format, cover_card_id, source_url, status, created_at, updated_at')
+        .in('tournament_id', ids)
+        .eq('status', 'published'),
+    );
+    // il catalogo pubblico mostra solo tornei che hanno almeno un deck pubblicato.
+    return withCounts(tournamentRows.map(toTournament), deckRows.map(toTournamentDeck)).filter((t) => t.publishedDeckCount > 0);
   },
 
-  async getTournament(id) {
-    const { data: tournaments, error } = await client.from('tournaments').select().eq('id', id);
-    if (error) throw error;
-    const row = (tournaments ?? [])[0] as TournamentRow | undefined;
-    if (!row) return null;
-    const { data: decks, error: e2 } = await client.from('tournament_decks').select().eq('tournament_id', id).eq('status', 'published');
-    if (e2) throw e2;
-    const deckRows = (decks ?? []) as TournamentDeckRow[];
-    const deckIds = deckRows.map((d) => d.id);
-    const entries = deckIds.length
-      ? await client.from('tournament_deck_entries').select('tournament_deck_id, card_id, zone, count').in('tournament_deck_id', deckIds)
-      : { data: [], error: null };
-    if (entries.error) throw entries.error;
-    return {
-      tournament: toTournament(row),
-      decks: withDeckCounts(deckRows.map(toTournamentDeck), ((entries.data ?? []) as TournamentDeckEntryRow[]).map(toTournamentDeckEntry)),
-    };
+  getTournament(id) {
+    return tournamentWithDecks(id, true);
   },
 
   async getTournamentDeck(id) {
-    const { data: decks, error } = await client.from('tournament_decks').select().eq('id', id);
-    if (error) throw error;
-    const deckRow = (decks ?? [])[0] as TournamentDeckRow | undefined;
+    const deckRow = await firstRow<TournamentDeckRow>(client.from('tournament_decks').select().eq('id', id));
     if (!deckRow) return null;
-    const { data: tournaments, error: e2 } = await client.from('tournaments').select().eq('id', deckRow.tournament_id);
-    if (e2) throw e2;
-    const tournamentRow = (tournaments ?? [])[0] as TournamentRow | undefined;
+    const tournamentRow = await firstRow<TournamentRow>(client.from('tournaments').select().eq('id', deckRow.tournament_id));
     if (!tournamentRow) return null;
-    const { data: entries, error: e3 } = await client.from('tournament_deck_entries').select().eq('tournament_deck_id', id);
-    if (e3) throw e3;
+    const entryRows = await rows<TournamentDeckEntryRow>(
+      client.from('tournament_deck_entries').select().eq('tournament_deck_id', id),
+    );
     return {
       deck: toTournamentDeck(deckRow),
       tournament: toTournament(tournamentRow),
-      entries: ((entries ?? []) as TournamentDeckEntryRow[]).map(toTournamentDeckEntry),
+      entries: entryRows.map(toTournamentDeckEntry),
     };
   },
 
   async getAdminTournaments() {
-    const { data: tournaments, error } = await client.from('tournaments').select().order('date', { ascending: false });
-    if (error) throw error;
-    const { data: decks, error: e2 } = await client.from('tournament_decks').select();
-    if (e2) throw e2;
-    return withCounts(((tournaments ?? []) as TournamentRow[]).map(toTournament), ((decks ?? []) as TournamentDeckRow[]).map(toTournamentDeck));
+    const tournamentRows = await rows<TournamentRow>(client.from('tournaments').select().order('date', { ascending: false }));
+    const deckRows = await rows<TournamentDeckRow>(client.from('tournament_decks').select());
+    return withCounts(tournamentRows.map(toTournament), deckRows.map(toTournamentDeck));
   },
 
-  async getAdminTournament(id) {
-    const { data: tournaments, error } = await client.from('tournaments').select().eq('id', id);
-    if (error) throw error;
-    const row = (tournaments ?? [])[0] as TournamentRow | undefined;
-    if (!row) return null;
-    const { data: decks, error: e2 } = await client.from('tournament_decks').select().eq('tournament_id', id);
-    if (e2) throw e2;
-    const deckRows = (decks ?? []) as TournamentDeckRow[];
-    const deckIds = deckRows.map((d) => d.id);
-    const entries = deckIds.length
-      ? await client.from('tournament_deck_entries').select('tournament_deck_id, card_id, zone, count').in('tournament_deck_id', deckIds)
-      : { data: [], error: null };
-    if (entries.error) throw entries.error;
-    return {
-      tournament: toTournament(row),
-      decks: withDeckCounts(deckRows.map(toTournamentDeck), ((entries.data ?? []) as TournamentDeckEntryRow[]).map(toTournamentDeckEntry)),
-    };
+  getAdminTournament(id) {
+    return tournamentWithDecks(id, false);
   },
 
   async createTournament(input) {
-    const { data, error } = await client
-      .from('tournaments')
-      .insert({ name: input.name, format: input.format, date: input.date, location: input.location || null })
-      .select()
-      .single();
-    if (error) throw error;
-    return toTournament(data as TournamentRow);
+    return toTournament(
+      await row<TournamentRow>(
+        client
+          .from('tournaments')
+          .insert({ name: input.name, format: input.format, date: input.date, location: input.location || null })
+          .select()
+          .single(),
+      ),
+    );
   },
 
   async updateTournament(id, input) {
-    const { error } = await client
-      .from('tournaments')
-      .update({ name: input.name, format: input.format, date: input.date, location: input.location || null, updated_at: new Date().toISOString() })
-      .eq('id', id);
-    if (error) throw error;
-    const { error: e2 } = await client
-      .from('tournament_decks')
-      .update({ format: input.format, updated_at: new Date().toISOString() })
-      .eq('tournament_id', id);
-    if (e2) throw e2;
+    await run(
+      client
+        .from('tournaments')
+        .update({ name: input.name, format: input.format, date: input.date, location: input.location || null, updated_at: now() })
+        .eq('id', id),
+    );
+    // il formato del torneo è la fonte: allineo i deck già inseriti.
+    await run(client.from('tournament_decks').update({ format: input.format, updated_at: now() }).eq('tournament_id', id));
   },
 
   async deleteTournament(id) {
-    const { error } = await client.from('tournaments').delete().eq('id', id);
-    if (error) throw error;
+    await run(client.from('tournaments').delete().eq('id', id));
   },
 
+  // ponytail: NON atomico — insert deck + insert entries sono due round-trip (come
+  // createDeck). Se l'incoerenza parziale morde, promuovi a una RPC transazionale.
   async createTournamentDeck(input) {
-    const { data, error } = await client
-      .from('tournament_decks')
-      .insert({
-        tournament_id: input.tournamentId,
-        name: input.name,
-        format: input.format,
-        placement: input.placement,
-        player_name: input.playerName || null,
-        cover_card_id: input.coverCardId ?? null,
-        source_url: input.sourceUrl || null,
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    const deck = toTournamentDeck(data as TournamentDeckRow);
+    const deck = toTournamentDeck(
+      await row<TournamentDeckRow>(
+        client
+          .from('tournament_decks')
+          .insert({
+            tournament_id: input.tournamentId,
+            name: input.name,
+            format: input.format,
+            placement: input.placement,
+            player_name: input.playerName || null,
+            cover_card_id: input.coverCardId ?? null,
+            source_url: input.sourceUrl || null,
+          })
+          .select()
+          .single(),
+      ),
+    );
     if (input.entries.length) {
-      const { error: e2 } = await client
-        .from('tournament_deck_entries')
-        .insert(input.entries.map((e) => ({ tournament_deck_id: deck.id, card_id: e.cardId, zone: e.zone, count: e.count })));
-      if (e2) throw e2;
+      await run(client.from('tournament_deck_entries').insert(entryRowsFor(deck.id, input.entries)));
     }
     return deck;
   },
 
   async updateTournamentDeck(id, input) {
-    const { error } = await client
-      .from('tournament_decks')
-      .update({
-        name: input.name,
-        format: input.format,
-        placement: input.placement,
-        player_name: input.playerName || null,
-        cover_card_id: input.coverCardId ?? null,
-        source_url: input.sourceUrl || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id);
-    if (error) throw error;
+    await run(
+      client
+        .from('tournament_decks')
+        .update({
+          name: input.name,
+          format: input.format,
+          placement: input.placement,
+          player_name: input.playerName || null,
+          cover_card_id: input.coverCardId ?? null,
+          source_url: input.sourceUrl || null,
+          updated_at: now(),
+        })
+        .eq('id', id),
+    );
   },
 
+  // ponytail: NON atomico — delete + insert sono due round-trip (come replaceDeckEntries).
   async replaceTournamentDeckEntries(id, entries) {
-    const { error } = await client.from('tournament_deck_entries').delete().eq('tournament_deck_id', id);
-    if (error) throw error;
+    await run(client.from('tournament_deck_entries').delete().eq('tournament_deck_id', id));
     if (entries.length) {
-      const { error: e2 } = await client
-        .from('tournament_deck_entries')
-        .insert(entries.map((e) => ({ tournament_deck_id: id, card_id: e.cardId, zone: e.zone, count: e.count })));
-      if (e2) throw e2;
+      await run(client.from('tournament_deck_entries').insert(entryRowsFor(id, entries)));
     }
-    const { error: e3 } = await client.from('tournament_decks').update({ updated_at: new Date().toISOString() }).eq('id', id);
-    if (e3) throw e3;
+    await run(client.from('tournament_decks').update({ updated_at: now() }).eq('id', id));
   },
 
   async setTournamentDeckStatus(id, status) {
-    const { error } = await client.from('tournament_decks').update({ status, updated_at: new Date().toISOString() }).eq('id', id);
-    if (error) throw error;
+    await run(client.from('tournament_decks').update({ status, updated_at: now() }).eq('id', id));
   },
 
   async deleteTournamentDeck(id) {
-    const { error } = await client.from('tournament_decks').delete().eq('id', id);
-    if (error) throw error;
+    await run(client.from('tournament_decks').delete().eq('id', id));
   },
 };

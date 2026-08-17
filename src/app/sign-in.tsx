@@ -1,12 +1,12 @@
 // Pagina di login: unico ingresso quando sloggato (il gate nel root layout manda qui).
-// Solo Google (vedi docs/adr/0005). UI Paper/MD3, niente colori hard-coded.
+// Solo Google. UI Paper/MD3, niente colori hard-coded.
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Button, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ThemedView } from '@/components/themed-view';
+import { ThemedView } from '@/components/shared/themed-view';
 import { Spacing } from '@/constants/theme';
 import { signInWithGoogle } from '@/data/auth';
 

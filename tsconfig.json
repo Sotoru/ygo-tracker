@@ -2,6 +2,13 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
+    // Serve ai *.check.ts (import di `node:assert`), che girano con `npm run check`
+    // e da qui vengono anche type-checkati. Attenzione: elencare `types` disattiva
+    // l'inclusione automatica degli altri @types globali — se un domani una dep ne
+    // chiede uno di ambient, va aggiunto a questo array.
+    "types": [
+      "node"
+    ],
     "paths": {
       "@/*": [
         "./src/*"
@@ -16,8 +23,5 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ],
-  "exclude": [
-    "**/*.check.ts"
   ]
 }

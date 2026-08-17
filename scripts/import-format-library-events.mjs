@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 // Genera SQL di seed da Format Library, senza scrivere sul DB.
-// Uso: node scripts/import-format-library-events.mjs --formats goat,edison --limit 20 --out tmp/format-library-import.sql
+// Uso: npx tsx scripts/import-format-library-events.mjs --formats goat,edison --limit 20 --out tmp/format-library-import.sql
+// Gira con tsx (non node) perché riusa il parser .ydk dell'app: un solo parser, non due che divergono.
 
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+
+import { parseYdk } from '../src/domain/ydk.ts';
 
 const API = 'https://formatlibrary.com/api';
 const SOURCE = 'https://formatlibrary.com';
@@ -80,22 +83,6 @@ function placement(value) {
   return 'top64';
 }
 
-function parseYdk(ydk) {
-  let zone = null;
-  const acc = new Map();
-  for (const raw of String(ydk ?? '').split(/\r?\n/)) {
-    const line = raw.trim();
-    if (!line) continue;
-    if (line.toLowerCase() === '#main') { zone = 'main'; continue; }
-    if (line.toLowerCase() === '#extra') { zone = 'extra'; continue; }
-    if (line.toLowerCase() === '!side') { zone = 'side'; continue; }
-    if (!zone || line.startsWith('#') || line.startsWith('!') || !/^\d+$/.test(line)) continue;
-    const key = `${zone}:${Number(line)}`;
-    acc.set(key, { cardId: Number(line), zone, count: (acc.get(key)?.count ?? 0) + 1 });
-  }
-  return [...acc.values()];
-}
-
 const formats = await getJson('/formats');
 const formatNames = formats
   .filter((format) => FORMAT_MAP.has(format.name) && requestedFormats.has(FORMAT_MAP.get(format.name)))
@@ -124,7 +111,7 @@ for (const formatName of formatNames) {
 
     for (const summary of decks) {
       const full = await getJson(`/decks/${summary.id}`);
-      const entries = parseYdk(full.ydk);
+      const entries = parseYdk(String(full.ydk ?? ''));
       if (!entries.length) {
         warnings.push(`Deck ${summary.id} (${event.abbreviation}) has no parseable .ydk`);
         continue;

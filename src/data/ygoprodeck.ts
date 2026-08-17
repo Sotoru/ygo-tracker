@@ -1,5 +1,6 @@
-// Client YGOPRODeck (sola lettura). Rate limit 20 req/s: TanStack Query fa cache
-// e dedup; la ricerca va debounced lato UI. Vedi docs/adr/0002 per le immagini.
+// Client YGOPRODeck (sola lettura). Rate limit 20 req/s da rispettare: TanStack
+// Query fa cache e dedup; la ricerca va debounced lato UI. Per le immagini vedi
+// cardImageUrl (i termini della fonte vietano l'hotlink diretto).
 
 const BASE = 'https://db.ygoprodeck.com/api/v7/cardinfo.php';
 
@@ -63,9 +64,6 @@ export async function searchCardsByName(fname: string): Promise<YgoCard[]> {
   return hyphenated !== fname ? fetchCards({ fname: hyphenated }) : primary;
 }
 
-export const getCardById = async (id: number): Promise<YgoCard | null> =>
-  (await fetchCards({ id: String(id) }))[0] ?? null;
-
 /** Più Card in una sola richiesta (id separati da virgola). ponytail: ordine non garantito, riordina il chiamante. */
 export const getCardsByIds = (ids: number[]): Promise<YgoCard[]> =>
   ids.length ? fetchCards({ id: ids.join(',') }) : Promise.resolve([]);
@@ -79,8 +77,11 @@ export const getCardsByNames = (names: string[]): Promise<YgoCard[]> =>
   names.length ? fetchCards({ name: names.join('|') }) : Promise.resolve([]);
 
 /**
- * URL immagine via proxy di caching (weserv), non hotlink diretto a YGOPRODeck.
- * Vedi docs/adr/0002. `expo-image` ci aggiunge la disk cache lato device.
+ * URL immagine via proxy di caching (weserv), non hotlink diretto a YGOPRODeck:
+ * i loro termini lo vietano, pena la blacklist dell'IP — non sostituire con
+ * l'URL originale. `expo-image` aggiunge la disk cache lato device. Gap noto: il
+ * primo fetch di ogni immagine tocca comunque l'origine; il download-e-riospita
+ * vero richiede un backend.
  */
 export function cardImageUrl(imageUrl: string, opts?: { width?: number }): string {
   const src = imageUrl.replace(/^https?:\/\//, ''); // weserv vuole l'host senza schema

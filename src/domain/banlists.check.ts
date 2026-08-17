@@ -1,6 +1,6 @@
 // Self-check delle banlist statiche. Esegui: npx tsx src/domain/banlists.check.ts
 // Nessun framework: solo assert. Verifica ciò che è controllabile SENZA rete
-// (il match nome↔YGOPRODeck arriverà col validatore). Vedi ADR 0003.
+// (il match nome↔YGOPRODeck arriverà col validatore).
 import assert from 'node:assert/strict';
 
 import { BANLISTS, banlistFor, statusOf } from './banlists';

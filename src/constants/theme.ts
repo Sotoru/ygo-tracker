@@ -6,7 +6,7 @@ import { MD3DarkTheme, MD3LightTheme, configureFonts } from 'react-native-paper'
 /**
  * Il tema MD3 di Paper è la sorgente unica dei colori. Questi sono i vecchi nomi
  * di token mappati sui ruoli MD3, così i call site esistenti non cambiano.
- * Vedi docs/adr/0004 e docs/Design.md.
+ * Vedi AGENTS.md, "Tema e tipografia".
  */
 export const ColorRole = {
   text: 'onSurface',

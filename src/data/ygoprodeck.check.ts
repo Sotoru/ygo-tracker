@@ -1,4 +1,5 @@
-// Self-check dell'unica logica non banale: l'URL del proxy immagini (ADR 0002).
+// Self-check dell'unica logica non banale: l'URL del proxy immagini (l'hotlink
+// diretto a YGOPRODeck è vietato dai loro termini).
 // Esegui: npx tsx src/data/ygoprodeck.check.ts
 import assert from 'node:assert/strict';
 

@@ -3,20 +3,22 @@
 // vedi useBanlistCards); lo status lo conosco già dal file (banlists.ts) e
 // ordino ogni sezione come nel file. Riusa i presenter della Wishlist col toggle
 // griglia/lista. Rotta sopra le tab (Stack root) → header/back propri.
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Appbar, List, Menu, Text, useTheme } from 'react-native-paper';
+import { Appbar, List, Menu } from 'react-native-paper';
 
-import { CardCell } from '@/components/card-cell';
-import { ThemedView } from '@/components/themed-view';
-import { cappedWidth, contentContainer, Spacing } from '@/constants/theme';
+import { CardCell } from '@/components/card/card-cell';
+import { ScreenHeader } from '@/components/shared/screen-header';
+import { ScreenState } from '@/components/shared/screen-state';
+import { ThemedView } from '@/components/shared/themed-view';
+import { contentContainer, Spacing } from '@/constants/theme';
 import { BANLISTS } from '@/domain/banlists';
 import { FORMATS, type BanStatus, type Format } from '@/domain/types';
-import { useCardDetail } from '@/hooks/use-card-detail';
-import { useBanlistCards } from '@/hooks/use-cards';
-import { useGrid } from '@/hooks/use-layout';
-import { BANLIST_COLUMN_OPTIONS, useSettings } from '@/hooks/use-settings';
+import { useCardDetail } from '@/hooks/card/use-card-detail';
+import { useBanlistCards } from '@/hooks/card/use-cards';
+import { useGrid } from '@/hooks/shared/use-layout';
+import { BANLIST_COLUMN_OPTIONS, useSettings } from '@/hooks/shared/use-settings';
 
 // Ordine di visualizzazione scelto: dal meno al più restrittivo.
 const SECTIONS: { status: Exclude<BanStatus, 'unlimited'>; label: string }[] = [
@@ -26,8 +28,6 @@ const SECTIONS: { status: Exclude<BanStatus, 'unlimited'>; label: string }[] = [
 ];
 
 export default function BanlistScreen() {
-  const router = useRouter();
-  const { colors } = useTheme();
   const openDetail = useCardDetail((s) => s.open);
   const { format } = useLocalSearchParams<{ format: Format }>();
   const known = format in FORMATS;
@@ -54,10 +54,7 @@ export default function BanlistScreen() {
 
   return (
     <ThemedView style={styles.screen}>
-      {/* barra cappata a 800 e centrata come il resto dell'app (sfondo trasparente) */}
-      <Appbar.Header style={styles.appbar}>
-        <Appbar.BackAction onPress={() => (router.canGoBack() ? router.back() : router.replace('/deck'))} />
-        <Appbar.Content title={known ? FORMATS[format].label : 'Banlist'} />
+      <ScreenHeader title={known ? FORMATS[format].label : 'Banlist'} fallback="/deck">
         {/* Toggle nome carte: l'icona mostra lo stato corrente (occhio aperto =
             visibile). Bool → un tap, niente menu. */}
         <Appbar.Action
@@ -89,54 +86,47 @@ export default function BanlistScreen() {
             />
           ))}
         </Menu>
-      </Appbar.Header>
+      </ScreenHeader>
 
-      {!known ? (
-        <Text variant="bodyMedium" style={[styles.msg, { color: colors.onSurfaceVariant }]}>
-          Formato sconosciuto.
-        </Text>
-      ) : isLoading ? (
-        <ActivityIndicator style={styles.msg} />
-      ) : isError ? (
-        <Text variant="bodyMedium" style={[styles.msg, { color: colors.onSurfaceVariant }]}>
-          Errore di rete. Riprova.
-        </Text>
-      ) : (
-        // ponytail: ScrollView non virtualizza; ~160 righe con expo-image reggono
-        // per un placeholder. Se pesa, passa la lista a SectionList (la griglia
-        // resta flexWrap).
-        <ScrollView contentContainerStyle={styles.content}>
-          {sections.map((sec) => (
-            <View key={sec.label}>
-              <List.Subheader>{`${sec.label} (${sec.cards.length})`}</List.Subheader>
-              <View style={styles.grid}>
-                {sec.cards.map((c) => (
-                  <View key={c.id} style={{ width: cellWidth }}>
-                    <CardCell
-                      name={c.name}
-                      imageUrl={c.card_images[0]?.image_url_cropped}
-                      subtitle={[]}
-                      showTitle={banlistShowTitles}
-                      onPress={() => openDetail(c)}
-                    />
-                  </View>
-                ))}
+      <ScreenState
+        gate={known ? undefined : 'Formato sconosciuto.'}
+        loading={isLoading}
+        error={isError}
+        data={sections}>
+        {(list) => (
+          // ponytail: ScrollView non virtualizza; ~160 righe con expo-image reggono
+          // per un placeholder. Se pesa, passa la lista a SectionList (la griglia
+          // resta flexWrap).
+          <ScrollView contentContainerStyle={styles.content}>
+            {list.map((sec) => (
+              <View key={sec.label}>
+                <List.Subheader>{`${sec.label} (${sec.cards.length})`}</List.Subheader>
+                <View style={styles.grid}>
+                  {sec.cards.map((c) => (
+                    <View key={c.id} style={{ width: cellWidth }}>
+                      <CardCell
+                        name={c.name}
+                        imageUrl={c.card_images[0]?.image_url_cropped}
+                        showTitle={banlistShowTitles}
+                        onPress={() => openDetail(c)}
+                      />
+                    </View>
+                  ))}
+                </View>
               </View>
-            </View>
-          ))}
-        </ScrollView>
-      )}
+            ))}
+          </ScrollView>
+        )}
+      </ScreenState>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  appbar: { ...cappedWidth, backgroundColor: 'transparent' },
   content: {
     ...contentContainer,
     paddingBottom: Spacing.six,
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  msg: { textAlign: 'center', paddingVertical: Spacing.six },
 });

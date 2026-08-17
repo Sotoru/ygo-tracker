@@ -11,8 +11,8 @@ import { useEffect, useRef } from "react";
 import { StyleSheet, useColorScheme } from "react-native";
 import { ActivityIndicator, PaperProvider } from "react-native-paper";
 
-import { CardDetailDialog } from "@/components/card-detail-dialog";
-import { ThemedView } from "@/components/themed-view";
+import { CardDetailDialog } from "@/components/card/card-detail-dialog";
+import { ThemedView } from "@/components/shared/themed-view";
 import {
   paperBlueDarkTheme,
   paperBlueLightTheme,
@@ -58,7 +58,7 @@ const paperSettings = {
   ),
 };
 
-// Gate: la sessione decide cosa è raggiungibile. Cloud-only (docs/adr/0005):
+// Gate: la sessione decide cosa è raggiungibile. Cloud-only:
 // niente sessione → solo /sign-in; con sessione → l'app. Stack.Protected (Expo Router v57).
 function RootNavigator() {
   const { data: session, isPending } = useSession();

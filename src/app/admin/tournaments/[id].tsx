@@ -2,57 +2,124 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import {
-  ActivityIndicator,
-  Appbar,
-  Button,
-  Chip,
-  Dialog,
-  Divider,
-  HelperText,
-  List,
-  Menu,
-  Portal,
-  Text,
-  TextInput,
-  useTheme,
-} from 'react-native-paper';
+import { Appbar, Button, Divider, List, Menu, useTheme } from 'react-native-paper';
 
-import { ThemedView } from '@/components/themed-view';
-import { cappedWidth, contentContainer, Spacing, dialogWidth } from '@/constants/theme';
+import { ConfirmDialog } from '@/components/shared/confirm-dialog';
+import { ScreenHeader } from '@/components/shared/screen-header';
+import { ScreenMessage, ScreenState } from '@/components/shared/screen-state';
+import { ThemedView } from '@/components/shared/themed-view';
+import { TournamentDeckDialog } from '@/components/tournament/tournament-deck-dialog';
+import {
+  canSaveTournament,
+  TournamentFields,
+  type TournamentFieldsValue,
+} from '@/components/tournament/tournament-fields';
+import { contentContainer, Spacing } from '@/constants/theme';
 import { isAdminSession, useSession } from '@/data/auth';
-import { pickTextFile } from '@/data/pick-file';
-import { formatTournamentDate, placementLabel, PLACEMENT_LIST } from '@/domain/tournaments';
-import { FORMATS, PLACEMENTS, type DeckEntryInput, type Format, type Placement } from '@/domain/types';
-import { parseYdk } from '@/domain/ydk';
+import type { TournamentDeckSummary } from '@/data/neon-tournaments';
+import { formatTournamentDate, placementLabel } from '@/domain/tournaments';
 import {
   useAdminTournament,
-  useCreateTournamentDeck,
   useDeleteTournament,
   useDeleteTournamentDeck,
-  useReplaceTournamentDeckEntries,
   useSetTournamentDeckStatus,
   useUpdateTournament,
-  useUpdateTournamentDeck,
-} from '@/hooks/use-tournaments';
+} from '@/hooks/tournament/use-tournaments';
 
-const FORMAT_LIST = Object.keys(FORMATS) as Format[];
+const emptyForm = (): TournamentFieldsValue => ({ name: '', date: '', location: '', format: 'goat' });
 
-type DeckForm = {
-  id?: string;
-  name: string;
-  playerName: string;
-  placement: Placement;
-  sourceUrl: string;
-  coverCardId: string;
-  entries: DeckEntryInput[];
-};
+// Riga deck con il suo menu azioni: il menu aperto è stato della riga, non della schermata.
+function AdminDeckRow({
+  deck,
+  onEdit,
+  onToggleStatus,
+  onDelete,
+}: {
+  deck: TournamentDeckSummary;
+  onEdit: () => void;
+  onToggleStatus: () => void;
+  onDelete: () => void;
+}) {
+  const { colors } = useTheme();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const published = deck.status === 'published';
+  const act = (fn: () => void) => () => {
+    setMenuOpen(false);
+    fn();
+  };
 
-const emptyDeckForm = (): DeckForm => ({ name: '', playerName: '', placement: 'top8', sourceUrl: '', coverCardId: '', entries: [] });
+  return (
+    <List.Item
+      title={deck.name}
+      description={[placementLabel(deck.placement), deck.playerName, `${deck.cardCount} carte`, deck.status]
+        .filter(Boolean)
+        .join(' · ')}
+      left={(props) => <List.Icon {...props} icon={published ? 'earth' : 'file-document-edit'} />}
+      right={() => (
+        <Menu
+          visible={menuOpen}
+          onDismiss={() => setMenuOpen(false)}
+          anchor={
+            <Button compact onPress={() => setMenuOpen(true)}>
+              Azioni
+            </Button>
+          }>
+          <Menu.Item leadingIcon="pencil" title="Modifica" onPress={act(onEdit)} />
+          <Menu.Item
+            leadingIcon={published ? 'file-document-edit' : 'earth'}
+            title={published ? 'Rimetti in draft' : 'Pubblica'}
+            onPress={act(onToggleStatus)}
+          />
+          <Divider />
+          <Menu.Item
+            leadingIcon="delete"
+            title="Elimina"
+            titleStyle={{ color: colors.error }}
+            onPress={act(onDelete)}
+          />
+        </Menu>
+      )}
+      style={[styles.row, { backgroundColor: colors.surfaceVariant }]}
+    />
+  );
+}
+
+// Pannello metadati del torneo: campi + Salva/Elimina.
+function TournamentPanel({
+  form,
+  onChange,
+  saving,
+  onSave,
+  onDelete,
+}: {
+  form: TournamentFieldsValue;
+  onChange: (value: TournamentFieldsValue) => void;
+  saving: boolean;
+  onSave: () => void;
+  onDelete: () => void;
+}) {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.panel, { backgroundColor: colors.surfaceVariant }]}>
+      <TournamentFields value={form} onChange={onChange} />
+      <View style={styles.actions}>
+        <Button
+          mode="contained"
+          disabled={!canSaveTournament(form) || saving}
+          loading={saving}
+          onPress={onSave}>
+          Salva torneo
+        </Button>
+        <Button mode="text" textColor={colors.error} onPress={onDelete}>
+          Elimina
+        </Button>
+      </View>
+    </View>
+  );
+}
 
 export default function AdminTournamentDetailScreen() {
   const router = useRouter();
-  const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { data: session } = useSession();
   const isAdmin = isAdminSession(session);
@@ -60,205 +127,113 @@ export default function AdminTournamentDetailScreen() {
 
   const updateTournament = useUpdateTournament();
   const deleteTournament = useDeleteTournament();
-  const createDeck = useCreateTournamentDeck();
-  const updateDeck = useUpdateTournamentDeck();
-  const replaceEntries = useReplaceTournamentDeckEntries();
   const setStatus = useSetTournamentDeckStatus();
   const deleteDeck = useDeleteTournamentDeck();
 
-  const [name, setName] = useState('');
-  const [date, setDate] = useState('');
-  const [location, setLocation] = useState('');
-  const [format, setFormat] = useState<Format>('goat');
-  const [deckFormOpen, setDeckFormOpen] = useState(false);
-  const [deckForm, setDeckForm] = useState<DeckForm>(emptyDeckForm);
-  const [menuDeckId, setMenuDeckId] = useState<string | null>(null);
-  const [confirmDeleteTournament, setConfirmDeleteTournament] = useState(false);
-  const [importError, setImportError] = useState(false);
-  const formReadyFor = data?.tournament.id;
-  const [draftSourceId, setDraftSourceId] = useState<string | undefined>();
+  const [form, setForm] = useState<TournamentFieldsValue>(emptyForm);
+  // null = dialog chiuso; { deck: null } = nuovo; { deck } = modifica
+  const [deckDialog, setDeckDialog] = useState<{ deck: TournamentDeckSummary | null } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [formSourceId, setFormSourceId] = useState<string | undefined>();
 
-  if (data && draftSourceId !== formReadyFor) {
-    setDraftSourceId(formReadyFor);
-    setName(data.tournament.name);
-    setDate(data.tournament.date);
-    setLocation(data.tournament.location ?? '');
-    setFormat(data.tournament.format);
-  }
-
-  const openNewDeck = () => {
-    setImportError(false);
-    setDeckForm(emptyDeckForm());
-    setDeckFormOpen(true);
-  };
-
-  const openEditDeck = (deckId: string) => {
-    const deck = data?.decks.find((d) => d.id === deckId);
-    if (!deck) return;
-    setImportError(false);
-    setDeckForm({
-      id: deck.id,
-      name: deck.name,
-      playerName: deck.playerName ?? '',
-      placement: deck.placement,
-      sourceUrl: deck.sourceUrl ?? '',
-      coverCardId: deck.coverCardId?.toString() ?? '',
-      entries: [],
+  // il form parte dai dati del torneo appena arrivano (e se cambio torneo, dai nuovi)
+  if (data && formSourceId !== data.tournament.id) {
+    setFormSourceId(data.tournament.id);
+    setForm({
+      name: data.tournament.name,
+      date: data.tournament.date,
+      location: data.tournament.location ?? '',
+      format: data.tournament.format,
     });
-    setDeckFormOpen(true);
-  };
-
-  const onImportDeck = async () => {
-    setImportError(false);
-    try {
-      const picked = await pickTextFile();
-      if (!picked) return;
-      const entries = parseYdk(picked.text);
-      setDeckForm((form) => ({ ...form, entries, name: form.name || picked.name.replace(/\.[^.]+$/, '') }));
-    } catch {
-      setImportError(true);
-    }
-  };
+  }
 
   const onSaveTournament = () => {
     if (!data) return;
-    updateTournament.mutate({ id: data.tournament.id, name: name.trim(), date: date.trim(), location: location.trim() || null, format });
+    updateTournament.mutate({
+      id: data.tournament.id,
+      name: form.name.trim(),
+      date: form.date.trim(),
+      location: form.location.trim() || null,
+      format: form.format,
+    });
   };
-
-  const onSaveDeck = async () => {
-    if (!data) return;
-    const coverCardId = deckForm.coverCardId.trim() ? Number(deckForm.coverCardId.trim()) : null;
-    if (deckForm.id) {
-      await updateDeck.mutateAsync({
-        id: deckForm.id,
-        name: deckForm.name.trim(),
-        format: data.tournament.format,
-        placement: deckForm.placement,
-        playerName: deckForm.playerName.trim() || null,
-        coverCardId: Number.isFinite(coverCardId) ? coverCardId : null,
-        sourceUrl: deckForm.sourceUrl.trim() || null,
-      });
-      if (deckForm.entries.length) await replaceEntries.mutateAsync({ id: deckForm.id, entries: deckForm.entries });
-    } else {
-      await createDeck.mutateAsync({
-        tournamentId: data.tournament.id,
-        name: deckForm.name.trim(),
-        format: data.tournament.format,
-        placement: deckForm.placement,
-        entries: deckForm.entries,
-        playerName: deckForm.playerName.trim() || null,
-        coverCardId: Number.isFinite(coverCardId) ? coverCardId : null,
-        sourceUrl: deckForm.sourceUrl.trim() || null,
-      });
-    }
-    setDeckFormOpen(false);
-  };
-
-  const deckCardCount = deckForm.entries.reduce((n, e) => n + e.count, 0);
 
   return (
     <ThemedView style={styles.screen}>
-      <Appbar.Header style={styles.appbar}>
-        <Appbar.BackAction onPress={() => (router.canGoBack() ? router.back() : router.replace('/admin/tournaments'))} />
-        <Appbar.Content title={data?.tournament.name ?? 'Torneo'} />
-        {isAdmin ? <Appbar.Action icon="plus" accessibilityLabel="Nuovo deck da torneo" onPress={openNewDeck} /> : null}
-      </Appbar.Header>
+      <ScreenHeader title={data?.tournament.name ?? 'Torneo'} fallback="/admin/tournaments">
+        {isAdmin ? (
+          <Appbar.Action
+            icon="plus"
+            accessibilityLabel="Nuovo deck da torneo"
+            onPress={() => setDeckDialog({ deck: null })}
+          />
+        ) : null}
+      </ScreenHeader>
 
-      <Portal>
-        <Dialog visible={deckFormOpen} onDismiss={() => setDeckFormOpen(false)} style={dialogWidth}>
-          <Dialog.Title>{deckForm.id ? 'Modifica deck da torneo' : 'Nuovo deck da torneo'}</Dialog.Title>
-          <Dialog.Content>
-            <ScrollView contentContainerStyle={styles.form}>
-              <TextInput label="Nome deck" value={deckForm.name} onChangeText={(v) => setDeckForm((f) => ({ ...f, name: v }))} mode="outlined" />
-              <TextInput label="Player" value={deckForm.playerName} onChangeText={(v) => setDeckForm((f) => ({ ...f, playerName: v }))} mode="outlined" />
-              <TextInput label="Fonte URL" value={deckForm.sourceUrl} onChangeText={(v) => setDeckForm((f) => ({ ...f, sourceUrl: v }))} mode="outlined" autoCapitalize="none" />
-              <TextInput label="Cover card id" value={deckForm.coverCardId} onChangeText={(v) => setDeckForm((f) => ({ ...f, coverCardId: v.replace(/[^0-9]/g, '') }))} mode="outlined" keyboardType="number-pad" />
-              <Text variant="labelLarge">Placement</Text>
-              <View style={styles.chips}>
-                {PLACEMENT_LIST.map((p) => <Chip key={p} selected={deckForm.placement === p} showSelectedOverlay onPress={() => setDeckForm((f) => ({ ...f, placement: p }))}>{PLACEMENTS[p].label}</Chip>)}
-              </View>
-              <Button mode="outlined" icon="file-upload" onPress={onImportDeck}>{deckForm.id ? 'Reimporta .ydk' : 'Importa .ydk'}</Button>
-              {importError ? <HelperText type="error" visible>Impossibile leggere il file.</HelperText> : null}
-              {deckCardCount > 0 ? <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>{deckCardCount} carte importate.</Text> : null}
-              {deckForm.id && deckCardCount === 0 ? <HelperText type="info" visible>Lascia senza import per conservare le carte attuali.</HelperText> : null}
-            </ScrollView>
-          </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setDeckFormOpen(false)}>Annulla</Button>
-            <Button disabled={!deckForm.name.trim() || (!deckForm.id && deckCardCount === 0) || createDeck.isPending || updateDeck.isPending} loading={createDeck.isPending || updateDeck.isPending} onPress={onSaveDeck}>Salva</Button>
-          </Dialog.Actions>
-        </Dialog>
+      {deckDialog && data ? (
+        <TournamentDeckDialog
+          tournament={data.tournament}
+          deck={deckDialog.deck}
+          onDismiss={() => setDeckDialog(null)}
+        />
+      ) : null}
 
-        <Dialog visible={confirmDeleteTournament} onDismiss={() => setConfirmDeleteTournament(false)} style={dialogWidth}>
-          <Dialog.Title>Eliminare il torneo?</Dialog.Title>
-          <Dialog.Content><Text variant="bodyMedium">Verranno eliminati anche i deck da torneo collegati.</Text></Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setConfirmDeleteTournament(false)}>Annulla</Button>
-            <Button loading={deleteTournament.isPending} onPress={async () => { await deleteTournament.mutateAsync(id); router.replace('/admin/tournaments'); }}>Elimina</Button>
-          </Dialog.Actions>
-        </Dialog>
-      </Portal>
+      <ConfirmDialog
+        visible={confirmDelete}
+        title="Eliminare il torneo?"
+        confirmLabel="Elimina"
+        loading={deleteTournament.isPending}
+        onDismiss={() => setConfirmDelete(false)}
+        onConfirm={async () => {
+          await deleteTournament.mutateAsync(id);
+          router.replace('/admin/tournaments');
+        }}>
+        Verranno eliminati anche i deck da torneo collegati.
+      </ConfirmDialog>
 
-      {!isAdmin ? (
-        <Text variant="bodyMedium" style={[styles.msg, { color: colors.onSurfaceVariant }]}>Accesso riservato admin.</Text>
-      ) : isLoading ? (
-        <ActivityIndicator style={styles.msg} />
-      ) : isError || !data ? (
-        <Text variant="bodyMedium" style={[styles.msg, { color: colors.onSurfaceVariant }]}>Torneo non trovato.</Text>
-      ) : (
-        <ScrollView contentContainerStyle={styles.content}>
-          <View style={[styles.panel, { backgroundColor: colors.surfaceVariant }]}> 
-            <TextInput label="Nome" value={name} onChangeText={setName} mode="outlined" />
-            <TextInput label="Data (YYYY-MM-DD)" value={date} onChangeText={setDate} mode="outlined" />
-            <TextInput label="Location" value={location} onChangeText={setLocation} mode="outlined" />
-            <View style={styles.chips}>
-              {FORMAT_LIST.map((f) => <Chip key={f} selected={format === f} showSelectedOverlay onPress={() => setFormat(f)}>{FORMATS[f].label}</Chip>)}
-            </View>
-            <View style={styles.actions}>
-              <Button mode="contained" disabled={!name.trim() || !date.trim() || updateTournament.isPending} loading={updateTournament.isPending} onPress={onSaveTournament}>Salva torneo</Button>
-              <Button mode="text" textColor={colors.error} onPress={() => setConfirmDeleteTournament(true)}>Elimina</Button>
-            </View>
-          </View>
+      <ScreenState
+        gate={isAdmin ? undefined : 'Accesso riservato admin.'}
+        loading={isLoading}
+        error={isError}
+        notFound="Torneo non trovato."
+        data={data}>
+        {({ tournament, decks }) => (
+          <ScrollView contentContainerStyle={styles.content}>
+            <TournamentPanel
+              form={form}
+              onChange={setForm}
+              saving={updateTournament.isPending}
+              onSave={onSaveTournament}
+              onDelete={() => setConfirmDelete(true)}
+            />
 
-          <List.Subheader>{`Deck da torneo · ${formatTournamentDate(data.tournament.date)}`}</List.Subheader>
-          {data.decks.length === 0 ? (
-            <Text variant="bodyMedium" style={[styles.msg, { color: colors.onSurfaceVariant }]}>Nessun deck da torneo.</Text>
-          ) : (
-            data.decks.map((deck) => (
-              <List.Item
-                key={deck.id}
-                title={deck.name}
-                description={[placementLabel(deck.placement), deck.playerName, `${deck.cardCount} carte`, deck.status].filter(Boolean).join(' · ')}
-                left={(props) => <List.Icon {...props} icon={deck.status === 'published' ? 'earth' : 'file-document-edit'} />}
-                right={() => (
-                  <Menu
-                    visible={menuDeckId === deck.id}
-                    onDismiss={() => setMenuDeckId(null)}
-                    anchor={<Button compact onPress={() => setMenuDeckId(deck.id)}>Azioni</Button>}>
-                    <Menu.Item leadingIcon="pencil" title="Modifica" onPress={() => { setMenuDeckId(null); openEditDeck(deck.id); }} />
-                    <Menu.Item leadingIcon={deck.status === 'published' ? 'file-document-edit' : 'earth'} title={deck.status === 'published' ? 'Rimetti in draft' : 'Pubblica'} onPress={() => { setMenuDeckId(null); setStatus.mutate({ id: deck.id, status: deck.status === 'published' ? 'draft' : 'published' }); }} />
-                    <Divider />
-                    <Menu.Item leadingIcon="delete" title="Elimina" titleStyle={{ color: colors.error }} onPress={() => { setMenuDeckId(null); deleteDeck.mutate(deck.id); }} />
-                  </Menu>
-                )}
-                style={[styles.row, { backgroundColor: colors.surfaceVariant }]}
-              />
-            ))
-          )}
-        </ScrollView>
-      )}
+            <List.Subheader>{`Deck da torneo · ${formatTournamentDate(tournament.date)}`}</List.Subheader>
+            {decks.length === 0 ? (
+              <ScreenMessage>Nessun deck da torneo.</ScreenMessage>
+            ) : (
+              decks.map((deck) => (
+                <AdminDeckRow
+                  key={deck.id}
+                  deck={deck}
+                  onEdit={() => setDeckDialog({ deck })}
+                  onToggleStatus={() =>
+                    setStatus.mutate({ id: deck.id, status: deck.status === 'published' ? 'draft' : 'published' })
+                  }
+                  onDelete={() => deleteDeck.mutate(deck.id)}
+                />
+              ))
+            )}
+          </ScrollView>
+        )}
+      </ScreenState>
     </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  appbar: { ...cappedWidth, backgroundColor: 'transparent' },
   content: { ...contentContainer, paddingBottom: Spacing.six, gap: Spacing.three },
   panel: { borderRadius: Spacing.three, padding: Spacing.three, gap: Spacing.three },
-  form: { gap: Spacing.three },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
   row: { borderRadius: Spacing.three, marginBottom: Spacing.two },
-  msg: { textAlign: 'center', paddingVertical: Spacing.six, width: '100%' },
 });

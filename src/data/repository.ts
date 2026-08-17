@@ -1,6 +1,7 @@
-// Repository local-first, puro: nessun import React Native, così è testabile in
-// node (vedi repository.check.ts). Il cablaggio ad AsyncStorage sta in store.ts.
-import type { Deck, DeckEntry, DeckEntryInput, Format, Snapshot, WishlistItem, Zone } from '@/domain/types';
+// Il seam dei repository: le interfacce che l'app consuma, più due helper puri di
+// read-model. L'unica impl viva è su Neon (neon-repository.ts, neon-decks.ts); il
+// cablaggio sta in store.ts. Nessun import React Native: gira anche in node.
+import type { Deck, DeckEntry, DeckEntryInput, Format, WishlistItem, Zone } from '@/domain/types';
 
 /**
  * Deck + copie nel MAIN (Extra/Side esclusi: la card mostra il numero che conta per il
@@ -15,20 +16,7 @@ export type DeckSummary = Deck & { cardCount: number };
 export const countMain = (entries: { zone: Zone; count: number }[]): number =>
   entries.reduce((n, e) => (e.zone === 'main' ? n + e.count : n), 0);
 
-/**
- * KV minimale cross-platform. AsyncStorage soddisfa questa firma direttamente
- * (web + native); i test passano un Map in memoria.
- */
-export interface KVStore {
-  getItem(key: string): Promise<string | null>;
-  setItem(key: string, value: string): Promise<void>;
-}
-
-/**
- * La sola parte cablata nell'app oggi: la Wishlist. L'impl viva è `NeonRepository`
- * (Data API + RLS, client-only, vedi docs/adr/0005); l'impl locale sotto la
- * soddisfa ancora per i test e come base dei Deck futuri.
- */
+/** La parte Wishlist del seam. Impl: `neonWishlist` (Data API + RLS, client-only). */
 export interface WishlistRepository {
   getWishlist(): Promise<WishlistItem[]>;
   /**
@@ -45,7 +33,7 @@ export interface WishlistRepository {
   deleteCard(cardId: number): Promise<void>;
 }
 
-/** La parte Deck del seam. L'impl viva è `neonDecks` (Neon + RLS); l'impl locale sotto resta per i test. */
+/** La parte Deck del seam. Impl: `neonDecks` (Neon + RLS). */
 export interface DeckRepository {
   /** Lista dei Deck dell'utente col conteggio carte, senza caricarne le entries. */
   getDecks(): Promise<DeckSummary[]>;
@@ -69,15 +57,6 @@ export interface DeckRepository {
   deleteDeck(id: string): Promise<void>;
 }
 
-/** Il seam completo: wishlist + deck. Oggi solo l'impl locale lo implementa tutto. Vedi docs/adr/0001. */
-export interface Repository extends WishlistRepository, DeckRepository {
-  /** Upsert su (deckId, cardId, zone); count <= 0 rimuove la voce. */
-  setDeckEntry(deckId: string, cardId: number, zone: Zone, count: number): Promise<void>;
-
-  /** Dump relazionale completo, pronto per l'import in Postgres/Drizzle. */
-  exportAll(): Promise<Snapshot>;
-}
-
 const ZONE_RANK: Record<Zone, number> = { main: 0, extra: 1, side: 2 };
 
 /**
@@ -89,177 +68,4 @@ export function resolveCover(coverCardId: number | null, entries: { cardId: numb
   if (coverCardId != null && entries.some((e) => e.cardId === coverCardId)) return coverCardId;
   const first = [...entries].sort((a, b) => ZONE_RANK[a.zone] - ZONE_RANK[b.zone] || a.cardId - b.cardId)[0];
   return first?.cardId ?? null;
-}
-
-// wishlist_items_v2: la wishlist ora vive su (cardId, rarity), non più (…, setCode).
-// Bump della chiave = wipe dei dati v1 incompatibili, senza codice di migrazione.
-const KEYS = { wishlist: 'wishlist_items_v2', decks: 'decks', entries: 'deck_entries' } as const;
-
-// ponytail: id locale sufficiente; store.ts inietta uuid v4 (expo-crypto) per Postgres.
-const defaultId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-
-export function createRepository(
-  kv: KVStore,
-  newId: () => string = defaultId,
-  now: () => string = () => new Date().toISOString(),
-): Repository {
-  const read = async <T>(key: string): Promise<T[]> => {
-    const raw = await kv.getItem(key);
-    return raw ? (JSON.parse(raw) as T[]) : [];
-  };
-  const write = <T>(key: string, rows: T[]) => kv.setItem(key, JSON.stringify(rows));
-
-  return {
-    async getWishlist() {
-      return read<WishlistItem>(KEYS.wishlist);
-    },
-    async setWishlistEntries(cardId, entries) {
-      const items = await read<WishlistItem>(KEYS.wishlist);
-      const wanted = entries.some((e) => e.count > 0); // resta desiderata almeno una rarità?
-      const touched = new Set(entries.map((e) => e.rarity));
-      // parto da: righe di altre carte + rarità di QUESTA carta non toccate dal
-      // payload (drift, non le tocco). Se `wanted`, l'intera carta torna Wanted.
-      const next = items
-        .filter((i) => i.cardId !== cardId || !touched.has(i.rarity))
-        .map((i) => (wanted && i.cardId === cardId && i.obtainedAt ? { ...i, obtainedAt: undefined } : i));
-      // upsert delle rarità desiderate; count<=0 è già fuori da `next` = rimossa
-      for (const { rarity, count } of entries) {
-        if (count <= 0) continue;
-        const existing = items.find((i) => i.cardId === cardId && i.rarity === rarity);
-        // id/addedAt stabili sull'upsert; una riga desiderata è per definizione Wanted
-        next.push({ id: existing?.id ?? newId(), cardId, rarity, count, addedAt: existing?.addedAt ?? now() });
-      }
-      await write(KEYS.wishlist, next);
-    },
-    async setObtained(cardId, obtained) {
-      const items = await read<WishlistItem>(KEYS.wishlist);
-      const obtainedAt = obtained ? now() : undefined;
-      await write(
-        KEYS.wishlist,
-        items.map((i) => (i.cardId === cardId ? { ...i, obtainedAt } : i)),
-      );
-    },
-    async deleteCard(cardId) {
-      const items = await read<WishlistItem>(KEYS.wishlist);
-      await write(
-        KEYS.wishlist,
-        items.filter((i) => i.cardId !== cardId),
-      );
-    },
-
-    async getDecks() {
-      const decks = await read<Deck>(KEYS.decks);
-      const entries = await read<DeckEntry>(KEYS.entries);
-      return decks.map((d) => {
-        const own = entries.filter((e) => e.deckId === d.id);
-        return {
-          ...d,
-          cardCount: countMain(own),
-          coverCardId: resolveCover(d.coverCardId, own), // read-model: copertina risolta (vedi DeckSummary)
-        };
-      });
-    },
-    async getDeck(id) {
-      const deck = (await read<Deck>(KEYS.decks)).find((d) => d.id === id);
-      if (!deck) return null;
-      const entries = (await read<DeckEntry>(KEYS.entries)).filter((e) => e.deckId === id);
-      return { deck, entries };
-    },
-    async createDeck(name, format, entries) {
-      const decks = await read<Deck>(KEYS.decks);
-      const ts = now();
-      const deck: Deck = { id: newId(), name, format, coverCardId: null, isPublic: false, createdAt: ts, updatedAt: ts };
-      await write(KEYS.decks, [...decks, deck]);
-      if (entries?.length) {
-        const rows = await read<DeckEntry>(KEYS.entries);
-        await write(KEYS.entries, [
-          ...rows,
-          ...entries.map((e) => ({ id: newId(), deckId: deck.id, ...e })),
-        ]);
-      }
-      return deck;
-    },
-    async setDeckName(deckId, name) {
-      const decks = await read<Deck>(KEYS.decks);
-      await write(
-        KEYS.decks,
-        decks.map((d) => (d.id === deckId ? { ...d, name, updatedAt: now() } : d)),
-      );
-    },
-    async replaceDeckEntries(deckId, entries) {
-      // delete-all delle entries di QUESTO deck + reinserimento in blocco della bozza.
-      const rows = await read<DeckEntry>(KEYS.entries);
-      const others = rows.filter((e) => e.deckId !== deckId);
-      await write(KEYS.entries, [...others, ...entries.map((e) => ({ id: newId(), deckId, ...e }))]);
-      const decks = await read<Deck>(KEYS.decks);
-      await write(
-        KEYS.decks,
-        decks.map((d) => (d.id === deckId ? { ...d, updatedAt: now() } : d)),
-      );
-    },
-    async setDeckCover(deckId, cardId) {
-      // scelta estetica: NON tocco updatedAt (non riordino la lista per un cambio copertina).
-      const decks = await read<Deck>(KEYS.decks);
-      await write(
-        KEYS.decks,
-        decks.map((d) => (d.id === deckId ? { ...d, coverCardId: cardId } : d)),
-      );
-    },
-    async setDeckFormat(deckId, format) {
-      const decks = await read<Deck>(KEYS.decks);
-      await write(
-        KEYS.decks,
-        decks.map((d) => (d.id === deckId ? { ...d, format, updatedAt: now() } : d)),
-      );
-    },
-    async setDeckPublic(deckId, isPublic) {
-      // cambio di visibilità, non di contenuto: NON tocco updatedAt (come setDeckCover).
-      const decks = await read<Deck>(KEYS.decks);
-      await write(
-        KEYS.decks,
-        decks.map((d) => (d.id === deckId ? { ...d, isPublic } : d)),
-      );
-    },
-    async deleteDeck(id) {
-      const decks = await read<Deck>(KEYS.decks);
-      await write(
-        KEYS.decks,
-        decks.filter((d) => d.id !== id),
-      );
-      const entries = await read<DeckEntry>(KEYS.entries);
-      await write(
-        KEYS.entries,
-        entries.filter((e) => e.deckId !== id), // cascade sulle entries
-      );
-    },
-    // ponytail: stessa read-modify-write di setWishlistEntries e stesso rischio di
-    // lost update, ma oggi nessun caller in loop (la Deck UI è uno stub) → niente
-    // race. Quando la Deck UI salverà più entries insieme, batcha qui come
-    // setWishlistEntries (o dai uno `scope` alla mutation).
-    async setDeckEntry(deckId, cardId, zone, count) {
-      const entries = await read<DeckEntry>(KEYS.entries);
-      const existing = entries.find(
-        (e) => e.deckId === deckId && e.cardId === cardId && e.zone === zone,
-      );
-      const rest = entries.filter((e) => e !== existing);
-      const next =
-        count > 0
-          ? [...rest, { id: existing?.id ?? newId(), deckId, cardId, zone, count }] // id stabile
-          : rest;
-      await write(KEYS.entries, next);
-      const decks = await read<Deck>(KEYS.decks);
-      await write(
-        KEYS.decks,
-        decks.map((d) => (d.id === deckId ? { ...d, updatedAt: now() } : d)),
-      );
-    },
-
-    async exportAll() {
-      return {
-        decks: await read<Deck>(KEYS.decks),
-        deckEntries: await read<DeckEntry>(KEYS.entries),
-        wishlistItems: await read<WishlistItem>(KEYS.wishlist),
-      };
-    },
-  };
 }

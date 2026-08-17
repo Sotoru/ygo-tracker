@@ -1,4 +1,5 @@
-// Banlist statiche dei retro format (ADR 0003). Fonte: Format Library
+// Banlist statiche dei retro format, mai recuperate live (vedi CONTEXT.md: i retro
+// format hanno F&L list storiche congelate). Fonte: Format Library
 // (formatlibrary.com), la lista F&L storica di riferimento per ciascun format:
 //   goat=April 2005, edison=March 2010, hat=April 2014, tengu=September 2011,
 //   redu=September 2012 (Return of the Duelist). TCG.

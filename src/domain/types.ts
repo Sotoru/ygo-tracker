@@ -1,5 +1,5 @@
-// Modello dati local-first in forma relazionale, così l'export verso Neon + Drizzle
-// è un import di tabelle e non un redesign. Vedi CONTEXT.MD e docs/adr/0001.
+// Modello dati in forma relazionale (decks, deck_entries, wishlist_items): la
+// stessa forma delle tabelle su Neon, definite in db/*.sql. Vedi CONTEXT.md.
 
 /** Il retro format per cui un Deck è costruito. Elenco estendibile (data-driven). */
 export type Format = 'goat' | 'edison' | 'hat' | 'tengu' | 'redu';
@@ -33,14 +33,17 @@ export const COPIES_BY_BAN_STATUS: Record<BanStatus, number> = {
 
 /** Registro dei formati: aggiungere un format = aggiungere una voce, non codice. */
 export const FORMATS: Record<Format, { label: string; poolCutoffDate: string | null }> = {
-  // Banlist statiche popolate in banlists.ts (ADR 0003). poolCutoffDate ("Card Pool")
-  // resta il task dati aperto.
+  // Banlist statiche popolate in banlists.ts, mai recuperate live (vedi CONTEXT.md).
+  // poolCutoffDate ("Card Pool") resta il task dati aperto.
   goat: { label: 'Goat', poolCutoffDate: null },
   edison: { label: 'Edison', poolCutoffDate: null },
   hat: { label: 'HAT', poolCutoffDate: null },
   tengu: { label: 'Tengu', poolCutoffDate: null },
   redu: { label: 'REDU', poolCutoffDate: null },
 };
+
+/** I format in ordine di registro: data-driven, come PLACEMENT_LIST per i piazzamenti. */
+export const FORMAT_LIST = Object.keys(FORMATS) as Format[];
 
 // --- "Tabelle" (righe). Si salvano solo dati utente + riferimenti alle carte
 // --- (cardId), mai il payload delle carte: quello vive nella cache di TanStack Query.
@@ -127,11 +130,4 @@ export interface TournamentDeckEntry {
   cardId: number;
   zone: Zone;
   count: number;
-}
-
-/** Dump relazionale completo, pronto per l'import in Postgres/Drizzle. */
-export interface Snapshot {
-  decks: Deck[];
-  deckEntries: DeckEntry[];
-  wishlistItems: WishlistItem[];
 }

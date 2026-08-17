@@ -1,7 +1,7 @@
 // Client Neon unificato (auth + Data API) via neon-js, solo Google. Un solo
 // `createClient`: `client.from(...)` inietta automaticamente il JWT di sessione
 // per RLS, e `client.auth` espone gli stessi metodi di prima. È il seam
-// cross-platform: il giorno del native, l'OAuth specifica si innesta qui. Vedi docs/adr/0005.
+// cross-platform: il giorno del native, l'OAuth specifica si innesta qui.
 import { createClient } from '@neondatabase/neon-js';
 // Da `/auth/react/adapters`, non `/auth/react`: quest'ultimo è il barrel dei
 // componenti UI (web DOM/CSS) e sballerebbe il bundle Metro. Vedi Critical Rule #2.
@@ -14,7 +14,7 @@ import { env } from '@/env';
 export const client = createClient<Database>({
   // allowAnonymous: senza sessione la Data API usa un token anonimo → l'RLS espone
   // i soli deck pubblici (deck detail pubblico). NON tocca `useSession`, che resta
-  // null da sloggato: il gate Stack.Protected regge. Vedi docs/adr/0005.
+  // null da sloggato: il gate Stack.Protected regge.
   auth: { adapter: BetterAuthReactAdapter(), url: env.EXPO_PUBLIC_NEON_AUTH_URL, allowAnonymous: true },
   dataApi: { url: env.EXPO_PUBLIC_NEON_DATA_API_URL },
 });
@@ -31,7 +31,7 @@ export function signInWithGoogle() {
 export async function signOut() {
   await client.auth.signOut();
   // Cloud multi-utente: butta via la cache in memoria E il persistito, così un
-  // altro login sullo stesso device non vede la wishlist del precedente. Vedi docs/adr/0005.
+  // altro login sullo stesso device non vede la wishlist del precedente.
   queryClient.clear();
   await persister.removeClient();
 }

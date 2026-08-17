@@ -7,20 +7,19 @@
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, FAB, List, Text, useTheme } from 'react-native-paper';
+import { Button, FAB, List } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CardCell } from '@/components/card-cell';
-import { ThemedView } from '@/components/themed-view';
+import { CardCell } from '@/components/card/card-cell';
+import { ScreenState } from '@/components/shared/screen-state';
+import { ThemedView } from '@/components/shared/themed-view';
 import { BottomTabInset, contentContainer, Spacing } from '@/constants/theme';
 import { isAdminSession, useSession } from '@/data/auth';
-import { FORMATS, type Format } from '@/domain/types';
-import { useCardsByIds } from '@/hooks/use-cards';
-import { useDecks } from '@/hooks/use-decks';
-import { useGrid } from '@/hooks/use-layout';
-import { useSettings } from '@/hooks/use-settings';
-
-const FORMAT_LIST = Object.keys(FORMATS) as Format[];
+import { FORMAT_LIST, FORMATS, type Format } from '@/domain/types';
+import { useCoverCards } from '@/hooks/shared/use-cover-cards';
+import { useDecks } from '@/hooks/deck/use-decks';
+import { useGrid } from '@/hooks/shared/use-layout';
+import { useSettings } from '@/hooks/shared/use-settings';
 
 // il DB tiene `format` come text (vedi neon-decks.ts): una chiave fuori dal registro
 // non è impossibile, e non deve far sparire il deck dalla lista
@@ -28,7 +27,6 @@ const banlistLabel = (format: string) => FORMATS[format as Format]?.label ?? 'Mi
 
 export default function DeckScreen() {
   const router = useRouter();
-  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { data: session } = useSession();
   const isAdmin = isAdminSession(session);
@@ -50,33 +48,21 @@ export default function DeckScreen() {
   }, [decks, groupByFormat]);
 
   // batch-fetch (una richiesta) delle carte-copertina, per mostrarne l'artwork
-  const coverIds = useMemo(
-    () => [...new Set(decks.map((d) => d.coverCardId).filter((id): id is number => id != null))],
-    [decks],
-  );
-  const { data: covers = [] } = useCardsByIds(coverIds);
-  const coverById = useMemo(() => new Map(covers.map((c) => [c.id, c])), [covers]);
+  const { coverUrl } = useCoverCards(decks);
 
   // copertine: celle grandi, poche per riga (non è una lista densa di carte)
   const { cellWidth } = useGrid({ phone: 3, tablet: 4, desktop: 5 });
 
-  const cell = (d: (typeof decks)[number]) => {
-    const cover = d.coverCardId != null ? coverById.get(d.coverCardId) : undefined;
-    return (
-      <View key={d.id} style={{ width: cellWidth }}>
-        <CardCell
-          name={d.name}
-          imageUrl={cover?.card_images[0]?.image_url_cropped}
-          subtitle={[
-            groupByFormat
-              ? `${d.cardCount} carte`
-              : `${banlistLabel(d.format)} · ${d.cardCount} carte`,
-          ]}
-          onPress={() => router.push(`/deck/${d.id}`)}
-        />
-      </View>
-    );
-  };
+  const cell = (d: (typeof decks)[number]) => (
+    <View key={d.id} style={{ width: cellWidth }}>
+      <CardCell
+        name={d.name}
+        imageUrl={coverUrl(d)}
+        subtitle={[groupByFormat ? `${d.cardCount} carte` : `${banlistLabel(d.format)} · ${d.cardCount} carte`]}
+        onPress={() => router.push(`/deck/${d.id}`)}
+      />
+    </View>
+  );
 
   return (
     <ThemedView
@@ -92,30 +78,26 @@ export default function DeckScreen() {
         ) : null}
       </View>
 
-      {isLoading ? (
-        <ActivityIndicator style={styles.msg} />
-      ) : isError ? (
-        <Text variant="bodyMedium" style={[styles.msg, { color: colors.onSurfaceVariant }]}>
-          Errore di rete. Riprova.
-        </Text>
-      ) : decks.length === 0 ? (
-        <Text variant="bodyMedium" style={[styles.msg, { color: colors.onSurfaceVariant }]}>
-          Nessun deck. Tocca + per crearne uno.
-        </Text>
-      ) : (
-        <ScrollView contentContainerStyle={styles.content}>
-          {sections ? (
-            sections.map((s) => (
-              <View key={s.label}>
-                <List.Subheader>{s.label}</List.Subheader>
-                <View style={styles.grid}>{s.decks.map(cell)}</View>
-              </View>
-            ))
-          ) : (
-            <View style={styles.grid}>{decks.map(cell)}</View>
-          )}
-        </ScrollView>
-      )}
+      <ScreenState
+        loading={isLoading}
+        error={isError}
+        empty="Nessun deck. Tocca + per crearne uno."
+        data={decks}>
+        {(list) => (
+          <ScrollView contentContainerStyle={styles.content}>
+            {sections ? (
+              sections.map((s) => (
+                <View key={s.label}>
+                  <List.Subheader>{s.label}</List.Subheader>
+                  <View style={styles.grid}>{s.decks.map(cell)}</View>
+                </View>
+              ))
+            ) : (
+              <View style={styles.grid}>{list.map(cell)}</View>
+            )}
+          </ScrollView>
+        )}
+      </ScreenState>
 
       <FAB
         icon="plus"
@@ -132,7 +114,6 @@ const styles = StyleSheet.create({
   content: { ...contentContainer, paddingBottom: Spacing.six },
   actions: { ...contentContainer, alignItems: 'flex-start', flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, marginBottom: Spacing.three },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  msg: { textAlign: 'center', paddingVertical: Spacing.six, paddingHorizontal: Spacing.three },
   // FAB standard MD3 ancorato al bordo dello schermo (allineamento identico web/native).
   fab: { position: 'absolute', right: Spacing.three },
 });

@@ -2,7 +2,7 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { VectorIcon } from 'expo-router';
 import { NativeTabs } from 'expo-router/unstable-native-tabs';
 
-import { useTheme } from '@/hooks/use-theme';
+import { useTheme } from '@/hooks/shared/use-theme';
 
 export default function AppTabs() {
   const colors = useTheme();

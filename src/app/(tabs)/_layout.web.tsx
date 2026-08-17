@@ -14,7 +14,7 @@ import {
 
 import { cappedWidth, dialogWidth, Spacing } from "@/constants/theme";
 import { signOut } from "@/data/auth";
-import { CARD_VIEW_OPTIONS, useSettings } from "@/hooks/use-settings";
+import { CARD_VIEW_OPTIONS, useSettings } from "@/hooks/shared/use-settings";
 
 export default function AppTabs() {
   const router = useRouter();
@@ -32,6 +32,8 @@ export default function AppTabs() {
     setSortByCopies,
     groupByFormat,
     setGroupByFormat,
+    frameTint,
+    setFrameTint,
   } = useSettings();
   const [viewMenuOpen, setViewMenuOpen] = useState(false);
   const viewLabel =
@@ -112,6 +114,15 @@ export default function AppTabs() {
                 <Switch value={rarityShort} onValueChange={setRarityShort} />
               )}
               onPress={() => setRarityShort(!rarityShort)}
+            />
+            {/* Stessa tinta per frame dei deck, applicata alle carte in wishlist (righe e
+                celle): il tipo si legge dal colore. Spenta = sfondo neutro del tema. */}
+            <List.Item
+              title="Colore per tipo di carta"
+              description="Sfondo tinto come il frame: verde magie, rosa trappole…"
+              left={(props) => <List.Icon {...props} icon="palette" />}
+              right={() => <Switch value={frameTint} onValueChange={setFrameTint} />}
+              onPress={() => setFrameTint(!frameTint)}
             />
 
             <List.Subheader>Deck</List.Subheader>
