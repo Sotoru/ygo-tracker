@@ -64,12 +64,12 @@ export async function searchCardsByName(fname: string): Promise<YgoCard[]> {
   return hyphenated !== fname ? fetchCards({ fname: hyphenated }) : primary;
 }
 
-/** Più Card in una sola richiesta (id separati da virgola). ponytail: ordine non garantito, riordina il chiamante. */
+/** Una sola richiesta per tutti gli id. ponytail: ordine non garantito, riordina il chiamante. */
 export const getCardsByIds = (ids: number[]): Promise<YgoCard[]> =>
   ids.length ? fetchCards({ id: ids.join(',') }) : Promise.resolve([]);
 
 /**
- * Più Card per NOME esatto in una sola richiesta (nomi separati da `|`). Usato
+ * Per NOME esatto, non fuzzy; una sola richiesta (nomi separati da `|`). Usato
  * dalle banlist statiche (chiave = nome). ~160 nomi ≈ URL 4KB: testato OK.
  * ponytail: ordine non garantito, riordina il chiamante (per status via banlists).
  */

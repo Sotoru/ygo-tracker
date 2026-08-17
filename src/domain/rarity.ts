@@ -16,5 +16,4 @@ const RARITY_SHORT: Record<string, string> = {
   "Quarter Century Secret Rare": "Quarter",
 };
 
-// nome pieno BE → sigla; sconosciuto → nome pieno invariato.
 export const shortRarity = (name: string): string => RARITY_SHORT[name] ?? name;

@@ -47,7 +47,6 @@ export default function DeckScreen() {
     );
   }, [decks, groupByFormat]);
 
-  // batch-fetch (una richiesta) delle carte-copertina, per mostrarne l'artwork
   const { coverUrl } = useCoverCards(decks);
 
   // copertine: celle grandi, poche per riga (non è una lista densa di carte)

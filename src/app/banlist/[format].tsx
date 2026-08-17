@@ -40,7 +40,6 @@ export default function BanlistScreen() {
   const { banlistColumns: desiredColumns, setBanlistColumns, banlistShowTitles, setBanlistShowTitles } =
     useSettings();
   const [colMenuOpen, setColMenuOpen] = useState(false);
-  // useGrid clampa la scelta utente a quante colonne ci stanno davvero
   const { cellWidth } = useGrid(desiredColumns);
 
   // carte per nome → sezioni nell'ordine del file (le non risolte, 0 oggi, cadono)

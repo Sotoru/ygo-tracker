@@ -105,8 +105,6 @@ function wishlistRows(
   ];
 }
 
-// Cosa dire quando non c'è niente da mostrare: dipende da se stai cercando, da
-// quanto hai scritto e dall'esito della richiesta.
 function EmptyState({
   search,
   wishlistLoading,
@@ -134,7 +132,6 @@ export default function WishlistScreen() {
   const { colors } = useTheme();
   const view = useSettings((s) => s.cardView);
 
-  // Griglia: 5 colonne da tablet in su, 2 su phone.
   const { cellWidth: gridCellWidth } = useGrid({
     phone: 2,
     tablet: 5,

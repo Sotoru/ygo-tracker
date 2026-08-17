@@ -100,12 +100,12 @@ export const neonDecks: DeckRepository = {
   },
 
   async setDeckPublic(deckId, isPublic) {
-    // cambio di visibilità: NON tocco updated_at (come setDeckCover). RLS limita alle proprie righe.
+    // cambio di visibilità: NON tocco updated_at (come setDeckCover).
     await run(client.from('decks').update({ is_public: isPublic }).eq('id', deckId));
   },
 
   async deleteDeck(id) {
-    // le entries cadono per ON DELETE CASCADE (decks.sql); RLS limita alle proprie righe.
+    // le entries cadono per ON DELETE CASCADE (decks.sql).
     await run(client.from('decks').delete().eq('id', id));
   },
 };

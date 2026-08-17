@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, paddingHorizontal: Spacing.three, justifyContent: 'center' },
   center: {
     width: '100%',
-    maxWidth: 360, // form stretto, centrato
+    maxWidth: 360,
     alignSelf: 'center',
     alignItems: 'center',
     gap: Spacing.three,

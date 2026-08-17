@@ -1,8 +1,7 @@
 // Larghezze e spaziature: sorgente unica, zero dipendenze (nemmeno react-native)
-// così la matematica è testabile con `npx tsx` — vedi layout.check.ts. Gli hook
-// che la usano stanno in @/hooks/use-layout. I nomi storici (Spacing,
-// MaxContentWidth) sono ri-esportati da @/constants/theme: i call site esistenti
-// non cambiano import.
+// così la matematica gira anche con `npx tsx`. Gli hook che la usano stanno in
+// @/hooks/use-layout. Spacing e MaxContentWidth sono ri-esportati da
+// @/constants/theme: i call site esistenti non cambiano import.
 
 export const Spacing = {
   half: 2,
@@ -48,7 +47,7 @@ export const contentContainer = {
 
 // Le liste dense di carte (zone di un deck): stesso intento in più schermate, un
 // valore solo così non divergono. Corrisponde a quanto rendeva il vecchio
-// riempimento automatico a MinCellWidth — vedi layout.check.ts.
+// riempimento automatico a MinCellWidth.
 export const DenseGridColumns = { phone: 3, tablet: 6, desktop: 8 } as const;
 
 // Tutti i dialog/modali: mai più larghi del content, centrati, con un gutter su

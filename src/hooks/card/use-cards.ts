@@ -1,5 +1,5 @@
-// Hook di ricerca/lettura carte. Il `cardId` dei risultati è ciò che passi al
-// repository (addToWishlist / setDeckEntry).
+// Hook di ricerca/lettura carte. L'`id` dei risultati è il `cardId` con cui il
+// repository referenzia una Card (setWishlistEntries, replaceDeckEntries).
 import { useQuery } from '@tanstack/react-query';
 
 import { BANLISTS } from '@/domain/banlists';

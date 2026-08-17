@@ -24,16 +24,16 @@ const FRAME_HUE: Record<string, string> = {
 export const TINT_ALPHA = '33';
 
 /**
- * Sfondo per il frame dato, già pronto (hue + alpha), oppure `undefined` se il
- * frame è sconosiuto/assente → il chiamante ripiega sul neutro del tema.
+ * Già pronto da usare (hue + alpha). `undefined` se il frame è sconosciuto o
+ * assente → il chiamante ripiega sul neutro del tema.
  */
 export function frameTint(frameType?: string): string | undefined {
   const hue = frameHue(frameType);
   return hue ? hue + TINT_ALPHA : undefined;
 }
 
-/** Hue opaca del frame, senza alpha: stessa tinta dello sfondo cella ma piena
- * (→ più scura), per gli elementi che devono staccare sopra di essa. */
+/** Senza alpha: stessa tinta dello sfondo cella ma piena (→ più scura), per gli
+ * elementi che devono staccare sopra di essa. */
 export function frameHue(frameType?: string): string | undefined {
   if (!frameType) return undefined;
   return FRAME_HUE[frameType.replace(/_pendulum$/, '')]; // pendulum → mostro base

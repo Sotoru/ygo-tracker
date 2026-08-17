@@ -13,15 +13,15 @@ import { useBreakpoint } from "@/hooks/shared/use-layout";
 
 import { frameTint } from "./frame-tint";
 
-// spezza le righe in colonne da `size`: [a,b,c,d,e] → [[a,b,c,d],[e]]
+// [a,b,c,d,e] con size 4 → [[a,b,c,d],[e]]
 const chunk = <T,>(arr: T[], size: number): T[][] => {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
 };
 
-// separa il conteggio finale " ×N" dal nome, così il ×N resta sempre visibile e
-// a troncare è il nome. Riga senza conteggio (es. "Ultra Rare") → count assente.
+// isolare il " ×N" finale lo tiene sempre visibile: a troncare è il nome.
+// Riga senza conteggio (es. "Ultra Rare") → count assente.
 const splitCount = (line: string): { name: string; count?: string } => {
   const m = line.match(/^(.*?)\s(\d+x)$/);
   return m ? { name: m[1], count: m[2] } : { name: line };
@@ -76,17 +76,14 @@ export function CardRow({
           : name
       }
       titleNumberOfLines={nameLines}
-      // una Text per riga (numberOfLines={1}): ogni rarità sta su una riga e
-      // tronca con "…" se troppo lunga; la List.Item cresce in altezza da sola.
+      // la List.Item cresce in altezza da sola con le righe che le passiamo
       description={({ color, ellipsizeMode }) => (
-        // ogni 4 righe una colonna, colonne affiancate
         <View style={styles.descRow}>
           {cols.map((col, ci) => (
             <View key={ci} style={styles.descCol}>
               {col.map((line, i) => {
                 const { name, count } = splitCount(line);
                 return (
-                  // ×N fisso all'inizio + nome che tronca in coda (numberOfLines 1)
                   <View key={i} style={styles.line}>
                     {count ? (
                       <Text variant="bodyMedium" style={[styles.lineCount, { color }]}>
@@ -169,7 +166,7 @@ const styles = StyleSheet.create({
     flexShrink: 0, // il ×N resta sempre intero e sulla stessa riga
   },
   thumb: {
-    width: 120, // larghezza fissa
+    width: 120,
     minHeight: 120, // pavimento (artwork cropped 1:1); alignSelf stretch la fa crescere
     // con l'altezza della riga (row Paper senza alignItems → stretch di default)
     alignSelf: "stretch",

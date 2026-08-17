@@ -25,20 +25,24 @@ export function PrintPicker({
   onSet: (entry: { cardId: number; entries: { rarity: string; count: number }[] }) => void;
   onClose: () => void;
 }) {
-  // rarità distinte della carta, ordine di prima apparizione
   const rarities = [...new Set((card.card_sets ?? []).map((p) => p.set_rarity))];
 
   const savedCount = (rarity: string) =>
     wishlist.find((w) => w.cardId === card.id && w.rarity === rarity)?.count ?? 0;
 
-  // stato locale: count per rarità, prefill dai valori in wishlist
   const [counts, setCounts] = useState<Record<string, number>>(() =>
     Object.fromEntries(rarities.map((r) => [r, savedCount(r)])),
   );
-  // margine fisso + altezza ScrollArea misurata a
-  // runtime (niente flex, collassa a 0 su web dentro Dialog/Portal).
-  const { dialogStyle, scrollAreaMaxHeight, onTopLayout, onBottomLayout } =
-    useDialogScrollBounds();
+  const {
+    dialogStyle,
+    scrollAreaMaxHeight,
+    topChromeStyle,
+    titleStyle,
+    scrollAreaStyle,
+    actionsStyle,
+    onTopLayout,
+    onBottomLayout,
+  } = useDialogScrollBounds();
 
   const bump = (rarity: string, delta: number) =>
     setCounts((c) => ({ ...c, [rarity]: Math.max(0, Math.min(MAX, (c[rarity] ?? 0) + delta)) }));
@@ -53,8 +57,10 @@ export function PrintPicker({
   return (
     <Portal>
       <Dialog visible onDismiss={onClose} style={[dialogWidth, dialogStyle]}>
-        <View onLayout={onTopLayout} style={styles.topChrome}>
-          <Dialog.Title numberOfLines={2}>{card.name}</Dialog.Title>
+        <View onLayout={onTopLayout} style={topChromeStyle}>
+          <Dialog.Title numberOfLines={2} style={titleStyle}>
+            {card.name}
+          </Dialog.Title>
         </View>
 
         {rarities.length === 0 ? (
@@ -62,7 +68,7 @@ export function PrintPicker({
             <Text variant="bodyMedium">Nessuna stampa disponibile per questa carta.</Text>
           </Dialog.Content>
         ) : (
-          <Dialog.ScrollArea style={[styles.scrollArea, { maxHeight: scrollAreaMaxHeight }]}>
+          <Dialog.ScrollArea style={[scrollAreaStyle, { maxHeight: scrollAreaMaxHeight }]}>
             <FlatList
               data={rarities}
               keyExtractor={(r) => r}
@@ -97,7 +103,7 @@ export function PrintPicker({
           </Dialog.ScrollArea>
         )}
 
-        <Dialog.Actions onLayout={onBottomLayout}>
+        <Dialog.Actions onLayout={onBottomLayout} style={actionsStyle}>
           <Button onPress={onClose}>Annulla</Button>
           <Button mode="contained" disabled={rarities.length === 0} onPress={confirm}>
             Conferma
@@ -109,14 +115,6 @@ export function PrintPicker({
 }
 
 const styles = StyleSheet.create({
-  // vedi commento gemello in card-detail-dialog.tsx
-  topChrome: {
-    marginTop: 0,
-    paddingTop: Spacing.four,
-  },
-  scrollArea: {
-    paddingHorizontal: Spacing.four,
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -713,7 +713,7 @@ const STATUSES: readonly LimitedStatus[] = ['forbidden', 'limited', 'semiLimited
 // validazione legge per nome, il file si scrive per gruppi.
 const flatCache = new Map<Format, Record<string, BanStatus>>();
 
-/** Mappa piatta {nome carta → BanStatus} del format (le carte non elencate sono `unlimited`). */
+/** Le carte non elencate non compaiono nella mappa: sono `unlimited`. */
 export function banlistFor(format: Format): Record<string, BanStatus> {
   const cached = flatCache.get(format);
   if (cached) return cached;

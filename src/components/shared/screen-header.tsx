@@ -29,7 +29,7 @@ export function ScreenHeader({
   );
 }
 
-// barra cappata come il resto dell'app e centrata, sfondo trasparente
+// esportato per le barre che non sono uno ScreenHeader (edit mode del deck)
 export const appbarStyle = { ...cappedWidth, backgroundColor: 'transparent' as const };
 
 const styles = StyleSheet.create({ appbar: appbarStyle });

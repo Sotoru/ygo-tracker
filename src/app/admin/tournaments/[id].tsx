@@ -84,7 +84,6 @@ function AdminDeckRow({
   );
 }
 
-// Pannello metadati del torneo: campi + Salva/Elimina.
 function TournamentPanel({
   form,
   onChange,

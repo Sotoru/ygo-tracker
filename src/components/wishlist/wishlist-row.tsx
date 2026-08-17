@@ -26,7 +26,6 @@ function summarize(items: WishlistItem[], card: YgoCard | undefined, short: bool
     .map((i) => `${i.count}x ${short ? shortRarity(i.rarity) : i.rarity}`);
 }
 
-/** Le due forme di riga carta della Wishlist: un risultato di ricerca o una salvata. */
 export type WishlistRowData =
   | { kind: 'search'; key: string; card: YgoCard }
   | {
@@ -38,7 +37,7 @@ export type WishlistRowData =
       obtained: boolean;
     };
 
-/** Sceglie il componente giusto per la riga: la decisione vive accanto alle righe. */
+/** Quale forma disegnare si decide qui, accanto alle righe, non nella schermata. */
 export function WishlistRow({
   row,
   owned,
@@ -92,8 +91,7 @@ function SearchRow({
       // niente rarità qui: mostrarne una sola (la prima stampa) su N possibili
       // ingannava, e la scelta si fa comunque nel PrintPicker. Senza didascalia c'è
       // spazio per una terza riga di nome — i nomi lunghi sono la norma in ricerca.
-      // una carta senza stampe non ha rarità da mostrare: qui il perché va detto,
-      // perché è l'unico posto dell'app in cui serve.
+      // "Nessuna stampa" lo passiamo solo da qui: è l'unico posto che ne ha bisogno.
       subtitle={hasPrints ? undefined : ['Nessuna stampa']}
       nameLines={3}
       onPress={() => openDetail(card)}>

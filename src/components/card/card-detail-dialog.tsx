@@ -30,12 +30,20 @@ export function CardDetailDialog() {
   const card = useCardDetail((s) => s.detailCard);
   const close = useCardDetail((s) => s.close);
   const [mode, setMode] = useState<Mode>("details");
-  const { dialogStyle, scrollAreaMaxHeight, side, onTopLayout, onBottomLayout } =
-    useDialogScrollBounds();
+  const {
+    dialogStyle,
+    scrollAreaMaxHeight,
+    topChromeStyle,
+    titleStyle,
+    scrollAreaStyle,
+    actionsStyle,
+    side,
+    onTopLayout,
+    onBottomLayout,
+  } = useDialogScrollBounds();
 
   if (!card) return null;
 
-  // riparte da "Dettagli" a ogni apertura: reset alla chiusura
   const onClose = () => {
     setMode("details");
     close();
@@ -44,8 +52,10 @@ export function CardDetailDialog() {
   return (
     <Portal>
       <Dialog visible onDismiss={onClose} style={[dialogWidth, dialogStyle]}>
-        <View onLayout={onTopLayout} style={styles.topChrome}>
-          <Dialog.Title numberOfLines={2}>{card.name}</Dialog.Title>
+        <View onLayout={onTopLayout} style={topChromeStyle}>
+          <Dialog.Title numberOfLines={2} style={titleStyle}>
+            {card.name}
+          </Dialog.Title>
 
           <View style={styles.toggle}>
             <SegmentedButtons
@@ -60,7 +70,7 @@ export function CardDetailDialog() {
         </View>
 
         <Dialog.ScrollArea
-          style={[styles.scrollArea, { maxHeight: scrollAreaMaxHeight }]}
+          style={[scrollAreaStyle, { maxHeight: scrollAreaMaxHeight }]}
         >
           <ScrollView contentContainerStyle={styles.content}>
             {mode === "details" ? (
@@ -130,7 +140,7 @@ export function CardDetailDialog() {
           </ScrollView>
         </Dialog.ScrollArea>
 
-        <Dialog.Actions onLayout={onBottomLayout}>
+        <Dialog.Actions onLayout={onBottomLayout} style={actionsStyle}>
           <Button onPress={onClose}>Chiudi</Button>
         </Dialog.Actions>
       </Dialog>
@@ -141,27 +151,18 @@ export function CardDetailDialog() {
 const ARTWORK_WIDTH = 280; // cappa in colonna, larghezza fissa affiancato
 
 const styles = StyleSheet.create({
-  // marginTop:0 sovrascrive il marginTop:24 che Dialog di Paper inietta sul
-  // primo figlio; paddingTop lo sostituisce con pari spaziatura ma misurabile
-  // da onLayout (i margin non contano nell'altezza misurata).
-  topChrome: {
-    marginTop: 0,
-    paddingTop: Spacing.four,
-  },
+  // il chrome (topChrome, titolo, ScrollArea, azioni) è stretto e arriva
+  // dall'hook: qui solo ciò che è specifico del dettaglio carta.
   toggle: {
     paddingHorizontal: Spacing.four,
-    paddingBottom: Spacing.three,
-  },
-  scrollArea: {
-    paddingHorizontal: Spacing.four,
+    paddingBottom: Spacing.two,
   },
   content: {
-    paddingVertical: Spacing.four,
+    paddingVertical: Spacing.two,
     gap: Spacing.three,
   },
-  // in colonna: artwork sopra, testo sotto. Affiancato (finestra più larga che
-  // alta): artwork a sinistra a larghezza fissa, le info si prendono il resto e
-  // l'altezza va al testo. Lo scroll resta uno solo, scorre tutta la riga.
+  // affiancati: artwork a larghezza fissa, le info si prendono il resto. Lo
+  // scroll resta uno solo e scorre tutta la riga.
   stack: {
     gap: Spacing.three,
   },
@@ -208,6 +209,6 @@ const styles = StyleSheet.create({
     maxWidth: 380, // come sopra: cappata e centrata, non a piena larghezza
     aspectRatio: 421 / 614, // ratio carta intera YGOPRODeck
     alignSelf: "center",
-    borderRadius: Spacing.two, // angoli leggermente arrotondati
+    borderRadius: Spacing.two,
   },
 });

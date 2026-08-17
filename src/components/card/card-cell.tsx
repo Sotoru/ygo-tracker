@@ -38,7 +38,6 @@ function Artwork({
   );
 }
 
-// Pillola in alto a sinistra sull'artwork (es. "×2").
 function Badge({
   label,
   count,
@@ -76,17 +75,15 @@ function Badge({
   );
 }
 
-// Righe sotto il nome: `subtitle` se il chiamante le ha già pronte (una per rarità),
-// altrimenti la singola riga rarità ×N. Niente di nessuno dei due = nessuna riga:
-// il messaggio "Nessuna stampa" lo passa chi lo vuole (la ricerca in wishlist), non
-// lo indovina la cella — nei deck e nelle banlist la rarità non c'entra.
+// Niente subtitle né rarity = nessuna riga: il messaggio "Nessuna stampa" lo passa
+// chi lo vuole (la ricerca in wishlist), non lo indovina la cella — nei deck e nelle
+// banlist la rarità non c'entra.
 const metaLines = (subtitle: string[] | undefined, rarity: string | undefined, count: number | undefined) => {
   if (subtitle) return subtitle;
   if (!rarity) return [];
   return [count ? `${rarity} ${count}x` : rarity];
 };
 
-// Nome (con la spunta "posseduta") e le righe di dettaglio sotto l'artwork.
 function CardMeta({
   name,
   showTitle,
@@ -239,7 +236,7 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "flex-end", // btn a destra in griglia
+    justifyContent: "flex-end",
     marginTop: "auto", // spinge le azioni in fondo → allineate tra carte della stessa riga
   },
 });

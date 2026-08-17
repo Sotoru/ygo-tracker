@@ -5,7 +5,7 @@
 // file .ydk, e ordinare per copie la distruggeva.
 //   groupRows   → un gruppo per riga (la griglia si chiude a fine gruppo)
 //   sortByCopies→ 3x → 2x → 1x DENTRO il gruppo (mai tra gruppi diversi)
-// Puro: npx tsx src/domain/deck-sections.check.ts
+// Puro: nessuna dipendenza React, gira anche con npx tsx.
 import { CARD_TYPES, ZONES, type Zone } from './types';
 import { cardType, EXTRA_TYPES, extraType } from './zone';
 

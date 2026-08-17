@@ -1,29 +1,25 @@
 // Modello dati in forma relazionale (decks, deck_entries, wishlist_items): la
 // stessa forma delle tabelle su Neon, definite in db/*.sql. Vedi CONTEXT.md.
 
-/** Il retro format per cui un Deck è costruito. Elenco estendibile (data-driven). */
 export type Format = 'goat' | 'edison' | 'hat' | 'tengu' | 'redu';
 
-/** Le tre zone di un Deck. La zona di una Card è in parte determinata dal suo tipo. */
 export type Zone = 'main' | 'extra' | 'side';
 
-/** Card Type: la categoria di gioco di una Card, derivata dal frameType (vedi CONTEXT.md). */
+/** Derivata dal `frameType` di YGOPRODeck, non da un campo nostro. */
 export type CardType = 'monster' | 'spell' | 'trap';
 
-/** I Card Type nell'ordine in cui si presentano dentro una Zone (come in un file .ydk). */
+/** Ordine in cui si presentano dentro una Zone (come in un file .ydk). */
 export const CARD_TYPES: CardType[] = ['monster', 'spell', 'trap'];
 
-/** Le zone in ordine di presentazione, con l'etichetta UI: un solo elenco per tutte le schermate. */
+/** Ordine di presentazione ed etichette: un solo elenco per tutte le schermate. */
 export const ZONES: { zone: Zone; label: string }[] = [
   { zone: 'main', label: 'Main' },
   { zone: 'extra', label: 'Extra' },
   { zone: 'side', label: 'Side' },
 ];
 
-/** Stato di una Card nella Banlist di un Format. */
 export type BanStatus = 'forbidden' | 'limited' | 'semiLimited' | 'unlimited';
 
-/** Copie massime consentite per Ban Status (usate dalla validazione soft). */
 export const COPIES_BY_BAN_STATUS: Record<BanStatus, number> = {
   forbidden: 0,
   limited: 1,
@@ -33,8 +29,8 @@ export const COPIES_BY_BAN_STATUS: Record<BanStatus, number> = {
 
 /** Registro dei formati: aggiungere un format = aggiungere una voce, non codice. */
 export const FORMATS: Record<Format, { label: string; poolCutoffDate: string | null }> = {
-  // Banlist statiche popolate in banlists.ts, mai recuperate live (vedi CONTEXT.md).
-  // poolCutoffDate ("Card Pool") resta il task dati aperto.
+  // Banlist popolate in banlists.ts; poolCutoffDate ("Card Pool") è il task dati
+  // aperto, per questo sono tutti null.
   goat: { label: 'Goat', poolCutoffDate: null },
   edison: { label: 'Edison', poolCutoffDate: null },
   hat: { label: 'HAT', poolCutoffDate: null },
@@ -42,36 +38,36 @@ export const FORMATS: Record<Format, { label: string; poolCutoffDate: string | n
   redu: { label: 'REDU', poolCutoffDate: null },
 };
 
-/** I format in ordine di registro: data-driven, come PLACEMENT_LIST per i piazzamenti. */
+/** In ordine di registro: l'ordine di dichiarazione di FORMATS è quello di presentazione. */
 export const FORMAT_LIST = Object.keys(FORMATS) as Format[];
 
 // --- "Tabelle" (righe). Si salvano solo dati utente + riferimenti alle carte
 // --- (cardId), mai il payload delle carte: quello vive nella cache di TanStack Query.
 
-/** Riga di `wishlist_items`: una (Card, Rarity) desiderata. Identità naturale: (cardId, rarity). */
+/** Riga di `wishlist_items`. Identità naturale: (cardId, rarity). */
 export interface WishlistItem {
   id: string;
   cardId: number; // id YGOPRODeck della Card
   rarity: string; // es. "Ultra Rare" — il Set è ignorato (vedi CONTEXT.md)
   count: number; // copie desiderate (1..9); 0 non si salva (rimuove la voce)
   addedAt: string; // ISO 8601
-  // Ciclo di vita Wanted/Obtained (vedi CONTEXT.md): assente = "Da prendere",
-  // valorizzato = "Presa". Stato per-carta: uniforme su tutte le rarità di una Card.
+  // Wanted/Obtained: assente = "Da prendere", valorizzato = "Presa". Stato
+  // per-carta, uniforme su tutte le rarità (vedi CONTEXT.md).
   obtainedAt?: string; // ISO 8601
 }
 
-/** Riga di `decks`: metadati del mazzo. */
+/** Riga di `decks`. */
 export interface Deck {
   id: string;
   name: string;
   format: Format;
   coverCardId: number | null; // scelta ESPLICITA della carta "in evidenza"; null = fallback alla prima carta
-  isPublic: boolean; // visibilità: privato di default; se true è leggibile dal ruolo anonymous (RLS)
+  isPublic: boolean; // privato di default; se true è leggibile dal ruolo anonymous (RLS)
   createdAt: string;
   updatedAt: string;
 }
 
-/** Riga di `deck_entries`: una Card in una zona di un Deck. Identità naturale: (deckId, cardId, zone). */
+/** Riga di `deck_entries`. Identità naturale: (deckId, cardId, zone). */
 export interface DeckEntry {
   id: string;
   deckId: string; // FK -> decks.id
@@ -80,7 +76,7 @@ export interface DeckEntry {
   count: number; // 1..3
 }
 
-/** Voce da importare (es. da un .ydk): senza id/deckId, li assegna il repository. */
+/** Voce da importare (es. da un .ydk): id e deckId li assegna il repository. */
 export interface DeckEntryInput {
   cardId: number;
   zone: Zone;
