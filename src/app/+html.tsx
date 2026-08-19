@@ -11,6 +11,11 @@ import { env } from '@/env';
 // wishlist. Dedup nel caso condividano host. use-credentials: Better Auth usa
 // cookie di sessione, quindi la connessione dev'essere credenziata per essere
 // riusata (se Lighthouse la segnala "unused", passa a anonymous).
+// Dominio di produzione: serve solo agli URL assoluti dei tag Open Graph, che si
+// risolvono a build time. In locale punta comunque al deploy, e va bene: nessuno
+// scrapa localhost.
+const SITE_URL = 'https://ygo-tracker.it';
+
 const preconnectOrigins = [
   ...new Set([
     new URL(env.EXPO_PUBLIC_NEON_AUTH_URL).origin,
@@ -46,6 +51,22 @@ export default function Root({ children }: PropsWithChildren) {
             Safari passa solo da qui. */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+        {/* Chrome su iOS, Messaggi, WhatsApp & co. non guardano favicon o apple-touch-icon:
+            l'anteprima la costruiscono da Open Graph (LinkPresentation su iOS). Senza
+            questi tag lo share sheet resta senza icona. L'URL dell'immagine deve essere
+            assoluto — chi fa lo scrape non ha una base su cui risolvere un path.
+            Niente og:url: la head è unica per tutte le rotte, quindi ogni pagina si
+            dichiarerebbe la home; chi scrapa usa l'URL che ha chiesto. */}
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="YGO Tracker" />
+        <meta property="og:title" content="YGO Tracker" />
+        <meta property="og:description" content="Tieni traccia di deck, wishlist e tornei Yu-Gi-Oh!" />
+        <meta property="og:image" content={`${SITE_URL}/icon-512.png`} />
+        <meta property="og:image:width" content="512" />
+        <meta property="og:image:height" content="512" />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:image" content={`${SITE_URL}/icon-512.png`} />
 
         {preconnectOrigins.map((origin) => (
           <link key={origin} rel="preconnect" href={origin} crossOrigin="use-credentials" />
