@@ -34,11 +34,10 @@ export default function Root({ children }: PropsWithChildren) {
             un'icona app-like e impagina quei 48px su un riquadro bianco (share sheet,
             segnalibri, home screen). Questi file stanno in public/, servita dalla root:
             niente hash di Metro, quindi l'href è stabile.
-            Gli angoli tondi sono cotti nel PNG perché fuori dalla home screen nessuno
-            applica una maschera. L'apple-touch-icon ha raggio 18%, più quadrata della
-            maschera iOS (~22.4%): così la maschera taglia solo pixel pieni e sulla home
-            non compaiono angoli trasparenti. La variante `maskable` del manifest è
-            l'opposto — quadrata piena, è Android a ritagliarla. */}
+            Quadrate e OPACHE, senza angoli cotti nel PNG: con l'alpha iOS le tratta da
+            favicon e le rimpicciolisce dentro un riquadro bianco (share sheet) invece di
+            riempirlo. Il tondo lo mette il sistema. Vale anche per la `maskable` del
+            manifest, che Android ritaglia da sé. */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
         <link rel="manifest" href="/manifest.json" />
